@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { addSession } from "@/lib/session-store"
 
 const loginAttempts = new Map<string, { count: number; timestamp: number }>()
 const MAX_ATTEMPTS = 5
@@ -102,10 +103,7 @@ export async function POST(request: Request) {
     if (sanitizedPin === ADMIN_PIN) {
       const sessionToken = generateSessionToken()
 
-      sessionStore.set(sessionToken, {
-        created: now,
-        ip,
-      })
+      addSession(sessionToken, ip)
 
       // Clear failed attempts for this IP
       loginAttempts.delete(ip)
@@ -115,7 +113,7 @@ export async function POST(request: Request) {
       response.cookies.set("admin_session", sessionToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        sameSite: "lax",
         maxAge: 60 * 60 * 24, // 24 hours
         path: "/",
       })

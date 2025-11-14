@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 
-// In-memory storage for configuration (will reset on server restart)
 let serverConfig = {
   alias: "",
   phone: "",
   paymentType: "alias" as "alias" | "cbu",
+  userCreationEnabled: true,
+  transferTimer: 30,
+  minAmount: 2000,
   updatedAt: new Date().toISOString(),
 }
 
@@ -17,6 +19,9 @@ export async function GET() {
           alias: process.env.NEXT_PUBLIC_DEFAULT_ALIAS || "DLHogar.mp",
           phone: process.env.NEXT_PUBLIC_DEFAULT_PHONE || "543415481923",
           paymentType: "alias" as "alias" | "cbu",
+          userCreationEnabled: true,
+          transferTimer: 30,
+          minAmount: 2000,
           updatedAt: new Date().toISOString(),
         }
 
@@ -34,18 +39,22 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get("admin_session")
-
-    if (!sessionCookie?.value) {
-      console.log("[v0] Config POST: No autorizado")
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+    const adminPin = process.env.ADMIN_PIN
+    if (!adminPin) {
+      console.log("[v0] Config POST: Server configuration error - no ADMIN_PIN")
+      return NextResponse.json({ error: "Configuración del servidor incompleta" }, { status: 500 })
     }
 
     const body = await request.json()
-    const { alias, phone, paymentType } = body
+    const { alias, phone, paymentType, userCreationEnabled, transferTimer, minAmount, pin } = body
 
-    console.log("[v0] Config POST received:", { alias, phone, paymentType })
+    console.log("[v0] Config POST received:", { alias, phone, paymentType, userCreationEnabled, transferTimer, minAmount, pinProvided: !!pin })
+
+    // Validate PIN
+    if (!pin || pin !== adminPin) {
+      console.log("[v0] Config POST: No autorizado - invalid or missing PIN")
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+    }
 
     if (!alias || !phone || !paymentType) {
       return NextResponse.json({ error: "Datos incompletos" }, { status: 400 })
@@ -55,10 +64,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Tipo de pago inválido" }, { status: 400 })
     }
 
+    if (typeof userCreationEnabled !== "boolean") {
+      return NextResponse.json({ error: "Estado de creación de usuarios inválido" }, { status: 400 })
+    }
+
+    if (typeof transferTimer !== "number" || transferTimer < 0 || transferTimer > 300) {
+      return NextResponse.json({ error: "Temporizador inválido (0-300 segundos)" }, { status: 400 })
+    }
+
+    if (typeof minAmount !== "number" || minAmount < 0) {
+      return NextResponse.json({ error: "Monto mínimo inválido" }, { status: 400 })
+    }
+
     serverConfig = {
       alias,
       phone,
       paymentType,
+      userCreationEnabled,
+      transferTimer,
+      minAmount,
       updatedAt: new Date().toISOString(),
     }
 
@@ -67,12 +91,12 @@ export async function POST(request: Request) {
       config: serverConfig,
     })
 
-    // Set persistent cookies that sync across devices
+    // Set configuration cookies for persistence
     response.cookies.set("cfg_alias", alias, {
       httpOnly: false,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 365, // 1 year
+      maxAge: 60 * 60 * 24 * 365,
       path: "/",
     })
 
@@ -85,6 +109,30 @@ export async function POST(request: Request) {
     })
 
     response.cookies.set("cfg_payment_type", paymentType, {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 365,
+      path: "/",
+    })
+
+    response.cookies.set("cfg_user_creation_enabled", String(userCreationEnabled), {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 365,
+      path: "/",
+    })
+
+    response.cookies.set("cfg_transfer_timer", String(transferTimer), {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 365,
+      path: "/",
+    })
+
+    response.cookies.set("cfg_min_amount", String(minAmount), {
       httpOnly: false,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",

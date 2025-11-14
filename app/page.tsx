@@ -40,6 +40,10 @@ export default function REDvitto36() {
   const [serverPhone, setServerPhone] = useState("")
   const [serverPaymentType, setServerPaymentType] = useState<"alias" | "cbu">("alias")
 
+  const [serverUserCreationEnabled, setServerUserCreationEnabled] = useState(true)
+  const [serverTransferTimer, setServerTransferTimer] = useState(30)
+  const [serverMinAmount, setServerMinAmount] = useState(2000)
+
   useEffect(() => {
     const loadServerConfig = async () => {
       try {
@@ -53,6 +57,9 @@ export default function REDvitto36() {
             setServerAlias(data.config.alias)
             setServerPhone(data.config.phone)
             setServerPaymentType(data.config.paymentType)
+            setServerUserCreationEnabled(data.config.userCreationEnabled ?? true)
+            setServerTransferTimer(data.config.transferTimer ?? 30)
+            setServerMinAmount(data.config.minAmount ?? 2000)
             setConfigLoaded(true)
             console.log("[v0] Config loaded from server:", data.config)
             
@@ -61,6 +68,9 @@ export default function REDvitto36() {
               localStorage.setItem("cfg_alias", data.config.alias)
               localStorage.setItem("cfg_phone", data.config.phone)
               localStorage.setItem("cfg_payment_type", data.config.paymentType)
+              localStorage.setItem("cfg_user_creation_enabled", String(data.config.userCreationEnabled ?? true))
+              localStorage.setItem("cfg_transfer_timer", String(data.config.transferTimer ?? 30))
+              localStorage.setItem("cfg_min_amount", String(data.config.minAmount ?? 2000))
             }
           }
         }
@@ -116,7 +126,11 @@ export default function REDvitto36() {
   const paymentLabel = paymentType === "alias" ? "Alias" : "CBU"
   const alias = serverAlias || getAlias()
 
-  const minAmount = "2000"
+  const minAmount = String(serverMinAmount || 
+    (typeof window !== "undefined" ? Number(localStorage.getItem("cfg_min_amount")) || 2000 : 2000))
+
+  const userCreationEnabled = serverUserCreationEnabled ?? 
+    (typeof window !== "undefined" ? localStorage.getItem("cfg_user_creation_enabled") === "true" : true)
 
   const phoneNumber = serverPhone || 
     (typeof window !== "undefined" 
@@ -163,12 +177,14 @@ export default function REDvitto36() {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" })
 
     if (step === 4) {
-      setTransferButtonTimer(30)
+      const timerValue = serverTransferTimer || 
+        (typeof window !== "undefined" ? Number(localStorage.getItem("cfg_transfer_timer")) || 30 : 30)
+      setTransferButtonTimer(timerValue)
       setBonusAccepted(false)
       setShowBonusModal(true)
       setTimeout(() => setIsBonusModalAnimating(true), 10)
     }
-  }, [step])
+  }, [step, serverTransferTimer])
 
   useEffect(() => {
     if (step === 4 && bonusAccepted && transferButtonTimer > 0) {
@@ -562,10 +578,13 @@ export default function REDvitto36() {
                   </p>
                   <div className="flex flex-col items-center gap-3 pt-4">
                     <button
-                      onClick={() => changeStep(2)}
-                      className="btn-liquid-glass max-w-[320px] min-w-[240px] h-12 px-5 text-base rounded-lg transition-all duration-200 leading-tight truncate text-black font-bold"
+                      onClick={() => userCreationEnabled ? changeStep(2) : null}
+                      disabled={!userCreationEnabled}
+                      className={`btn-liquid-glass max-w-[320px] min-w-[240px] h-12 px-5 text-base rounded-lg transition-all duration-200 leading-tight truncate text-black font-bold ${
+                        !userCreationEnabled ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
                     >
-                      Crear mi usuario
+                      {userCreationEnabled ? "Crear mi usuario" : "Intente más tarde"}
                     </button>
                     <Button
                       onClick={openInfoModal}
@@ -964,7 +983,7 @@ export default function REDvitto36() {
                         ¿Puedo cargar desde otra cuenta?
                       </AccordionTrigger>
                       <AccordionContent className="text-muted-foreground leading-relaxed">
-                        Sí, podés cargar desde cualquier cuenta bancaria o billetera virtual. Solo asegúrate de enviar
+                        Sí, podés cargar desde cualquier cuenta bancaria o billetera virtual. Solo asegurate de enviar
                         el comprobante con tu usuario correcto.
                       </AccordionContent>
                     </AccordionItem>

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
-
-const sessionStore = new Map<string, { created: number; ip: string }>()
+import { removeSession } from "@/lib/session-store"
 
 export async function POST(request: Request) {
   try {
@@ -23,7 +22,7 @@ export async function POST(request: Request) {
       const sessionMatch = cookieHeader.match(/admin_session=([^;]+)/)
       if (sessionMatch) {
         const sessionToken = sessionMatch[1]
-        sessionStore.delete(sessionToken)
+        removeSession(sessionToken)
       }
     }
 
@@ -32,7 +31,7 @@ export async function POST(request: Request) {
     response.cookies.set("admin_session", "", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "lax",
       maxAge: 0,
       path: "/",
     })

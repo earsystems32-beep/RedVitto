@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Lock, LogOut, Save, Sparkles, Phone, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Switch } from "@/components/ui/switch"
+import { Lock, LogOut, Save, Sparkles, Phone, CheckCircle2, AlertCircle, Clock, DollarSign, Users } from 'lucide-react'
 
 const SUPPORT_CONTACTS = [
   { name: "Lucia — P", phone: "5493417528062" },
@@ -50,6 +51,13 @@ export default function AdminPage() {
   const [activePhone, setActivePhone] = useState("")
   const [activeContactName, setActiveContactName] = useState("")
   const [activePaymentType, setActivePaymentType] = useState<"alias" | "cbu">("alias")
+  const [userCreationEnabled, setUserCreationEnabled] = useState(true)
+  const [transferTimer, setTransferTimer] = useState(30)
+  const [minAmount, setMinAmount] = useState(2000)
+  const [activeUserCreationEnabled, setActiveUserCreationEnabled] = useState(true)
+  const [activeTransferTimer, setActiveTransferTimer] = useState(30)
+  const [activeMinAmount, setActiveMinAmount] = useState(2000)
+  const [adminPin, setAdminPin] = useState("") // Store PIN for config saves
 
   useEffect(() => {
     checkAuth()
@@ -75,13 +83,22 @@ export default function AdminPage() {
     const savedAlias = localStorage.getItem("cfg_alias") || ""
     const savedPhone = localStorage.getItem("cfg_phone") || ""
     const savedPaymentType = (localStorage.getItem("cfg_payment_type") as "alias" | "cbu") || "alias"
+    const savedUserCreation = localStorage.getItem("cfg_user_creation_enabled") === "true"
+    const savedTimer = Number(localStorage.getItem("cfg_transfer_timer")) || 30
+    const savedMinAmount = Number(localStorage.getItem("cfg_min_amount")) || 2000
 
     setActiveAlias(savedAlias)
     setActivePhone(savedPhone)
     setActivePaymentType(savedPaymentType)
+    setActiveUserCreationEnabled(savedUserCreation)
+    setActiveTransferTimer(savedTimer)
+    setActiveMinAmount(savedMinAmount)
 
     setAlias(savedAlias)
     setPaymentType(savedPaymentType)
+    setUserCreationEnabled(savedUserCreation)
+    setTransferTimer(savedTimer)
+    setMinAmount(savedMinAmount)
 
     if (savedPhone) {
       const idx = SUPPORT_CONTACTS.findIndex((c) => c.phone === savedPhone)
@@ -135,6 +152,7 @@ export default function AdminPage() {
 
       if (data.success) {
         setIsAuthenticated(true)
+        setAdminPin(pinInput.trim()) // Store PIN for later use
         loadConfig()
         setPinInput("")
       } else {
@@ -157,6 +175,7 @@ export default function AdminPage() {
       })
       setIsAuthenticated(false)
       setPinInput("")
+      setAdminPin("") // Clear stored PIN
     } catch (error) {
       console.error("Logout error:", error)
     }
@@ -230,15 +249,31 @@ export default function AdminPage() {
       }
     }
 
+    if (transferTimer < 0 || transferTimer > 300) {
+      alert("El temporizador debe estar entre 0 y 300 segundos")
+      return
+    }
+
+    if (minAmount < 0) {
+      alert("El monto mínimo debe ser mayor o igual a 0")
+      return
+    }
+
     try {
       const response = await fetch("/api/sys32/config", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         credentials: "include",
         body: JSON.stringify({
           alias: alias.trim(),
           phone: phoneValue,
           paymentType: paymentType,
+          userCreationEnabled,
+          transferTimer,
+          minAmount,
+          pin: adminPin, // Send PIN for authentication
         }),
       })
 
@@ -252,10 +287,17 @@ export default function AdminPage() {
         localStorage.setItem("cfg_alias", alias.trim())
         localStorage.setItem("cfg_phone", phoneValue)
         localStorage.setItem("cfg_payment_type", paymentType)
+        localStorage.setItem("cfg_user_creation_enabled", String(userCreationEnabled))
+        localStorage.setItem("cfg_transfer_timer", String(transferTimer))
+        localStorage.setItem("cfg_min_amount", String(minAmount))
 
         setActiveAlias(alias.trim())
         setActivePhone(phoneValue)
         setActivePaymentType(paymentType)
+        setActiveUserCreationEnabled(userCreationEnabled)
+        setActiveTransferTimer(transferTimer)
+        setActiveMinAmount(minAmount)
+        
         const idx = Number(selectedContactIndex)
         if (idx >= 0 && idx < SUPPORT_CONTACTS.length) {
           setActiveContactName(SUPPORT_CONTACTS[idx].name)
@@ -336,9 +378,78 @@ export default function AdminPage() {
                   <CardDescription className="text-purple-200/80">Modificá los parámetros del sistema</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6 pb-8">
+                  <div className="space-y-3 p-4 rounded-lg bg-purple-900/30 border border-purple-500/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Users className="w-5 h-5 text-amber-400" />
+                      <h3 className="text-lg font-semibold text-amber-300">Control de acceso</h3>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="user-creation-toggle" className="text-base text-purple-100/90 font-medium">
+                        Permitir creación de usuarios
+                      </Label>
+                      <Switch
+                        id="user-creation-toggle"
+                        checked={userCreationEnabled}
+                        onCheckedChange={setUserCreationEnabled}
+                        className="data-[state=checked]:bg-amber-500"
+                      />
+                    </div>
+                    <p className="text-xs text-purple-300/70">
+                      Cuando está desactivado, los usuarios no podrán crear nuevas cuentas
+                    </p>
+                  </div>
+
+                  <div className="space-y-3 p-4 rounded-lg bg-purple-900/30 border border-purple-500/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Clock className="w-5 h-5 text-amber-400" />
+                      <h3 className="text-lg font-semibold text-amber-300">Temporizador</h3>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="transfer-timer" className="text-base text-purple-100/90 font-medium">
+                        Tiempo de espera (segundos)
+                      </Label>
+                      <Input
+                        id="transfer-timer"
+                        type="number"
+                        min="0"
+                        max="300"
+                        value={transferTimer}
+                        onChange={(e) => setTransferTimer(Number(e.target.value))}
+                        className="h-12 text-base bg-purple-950/50 border-purple-500/30 focus:border-amber-400 focus:ring-amber-400/50 transition-all duration-200 text-white"
+                      />
+                      <p className="text-xs text-purple-300/70">
+                        Tiempo de espera en la sección "Esperando transferencia" (0-300 segundos)
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 p-4 rounded-lg bg-purple-900/30 border border-purple-500/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <DollarSign className="w-5 h-5 text-amber-400" />
+                      <h3 className="text-lg font-semibold text-amber-300">Monto mínimo</h3>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="min-amount" className="text-base text-purple-100/90 font-medium">
+                        Monto mínimo de carga ($)
+                      </Label>
+                      <Input
+                        id="min-amount"
+                        type="number"
+                        min="0"
+                        step="100"
+                        value={minAmount}
+                        onChange={(e) => setMinAmount(Number(e.target.value))}
+                        className="h-12 text-base bg-purple-950/50 border-purple-500/30 focus:border-amber-400 focus:ring-amber-400/50 transition-all duration-200 text-white"
+                      />
+                      <p className="text-xs text-purple-300/70">
+                        Monto mínimo requerido para realizar una carga
+                      </p>
+                    </div>
+                  </div>
+
                   <div className="space-y-3">
                     <Label className="text-base text-purple-100/90 font-semibold">Tipo de pago</Label>
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
                       <div className="flex gap-4">
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input
@@ -484,9 +595,29 @@ export default function AdminPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-2 pb-4">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs text-amber-200/70 font-medium min-w-[120px]">Crear usuarios:</Label>
+                      <div className="h-8 px-3 rounded-md bg-amber-950/50 border border-amber-500/30 flex items-center flex-1">
+                        <span className="text-sm text-amber-100">
+                          {activeUserCreationEnabled ? "Activado" : "Desactivado"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs text-amber-200/70 font-medium min-w-[120px]">Temporizador:</Label>
+                      <div className="h-8 px-3 rounded-md bg-amber-950/50 border border-amber-500/30 flex items-center flex-1">
+                        <span className="text-sm text-amber-100">{activeTransferTimer}s</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs text-amber-200/70 font-medium min-w-[120px]">Monto mínimo:</Label>
+                      <div className="h-8 px-3 rounded-md bg-amber-950/50 border border-amber-500/30 flex items-center flex-1">
+                        <span className="text-sm text-amber-100">${activeMinAmount}</span>
+                      </div>
+                    </div>
                     {activeAlias && (
                       <div className="flex items-center gap-2">
-                        <Label className="text-xs text-amber-200/70 font-medium min-w-[80px]">
+                        <Label className="text-xs text-amber-200/70 font-medium min-w-[120px]">
                           {activePaymentType === "alias" ? "Alias:" : "CBU:"}
                         </Label>
                         <div className="h-8 px-3 rounded-md bg-amber-950/50 border border-amber-500/30 flex items-center flex-1">
@@ -496,7 +627,7 @@ export default function AdminPage() {
                     )}
                     {activePhone && (
                       <div className="flex items-center gap-2">
-                        <Label className="text-xs text-amber-200/70 font-medium min-w-[80px]">Soporte:</Label>
+                        <Label className="text-xs text-amber-200/70 font-medium min-w-[120px]">Soporte:</Label>
                         <div className="h-8 px-3 rounded-md bg-amber-950/50 border border-amber-500/30 flex items-center flex-1">
                           <span className="text-sm text-amber-100 truncate">{activeContactName}</span>
                         </div>
