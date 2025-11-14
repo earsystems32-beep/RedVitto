@@ -550,7 +550,7 @@ export default function REDvitto36() {
                       textShadow: "0 2px 8px rgba(217, 119, 6, 0.4)",
                     }}
                   >
-                    REDvitto36
+                    REDvitto36.
                   </h1>
                   <p className="text-lg md:text-xl text-muted-foreground font-normal text-center">
                     Creá tu usuario y empezá a jugar!
