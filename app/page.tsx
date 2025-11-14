@@ -118,27 +118,18 @@ export default function REDvitto36() {
 
   const minAmount = "2000"
 
-  const getPhoneNumber = () => {
-    if (serverPhone) {
-      console.log("[v0] Using server phone:", serverPhone)
-      return serverPhone
-    }
-    if (typeof window !== "undefined") {
-      const cookies = document.cookie.split(';').reduce((acc, cookie) => {
-        const [key, value] = cookie.trim().split('=')
-        acc[key] = value
-        return acc
-      }, {} as Record<string, string>)
-      
-      const cookiePhone = cookies.cfg_phone
-      const localPhone = localStorage.getItem("cfg_phone")
-      const sessionPhone = sessionStorage.getItem("cfg_phone")
-      const envPhone = process.env.NEXT_PUBLIC_DEFAULT_PHONE || "543415481923"
-      
-      return cookiePhone || localPhone || sessionPhone || envPhone
-    }
-    return process.env.NEXT_PUBLIC_DEFAULT_PHONE || "543415481923"
-  }
+  const phoneNumber = serverPhone || 
+    (typeof window !== "undefined" 
+      ? (document.cookie.split(';').reduce((acc, cookie) => {
+          const [key, value] = cookie.trim().split('=')
+          acc[key] = value
+          return acc
+        }, {} as Record<string, string>).cfg_phone || 
+        localStorage.getItem("cfg_phone") || 
+        sessionStorage.getItem("cfg_phone") ||
+        process.env.NEXT_PUBLIC_DEFAULT_PHONE ||
+        "543415481923")
+      : process.env.NEXT_PUBLIC_DEFAULT_PHONE || "543415481923")
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -352,8 +343,7 @@ export default function REDvitto36() {
     }
 
     const time = localStorage.getItem("eds_transfer_time") || "sin hora registrada"
-    const phone = getPhoneNumber()
-    console.log("[v0] Opening WhatsApp with phone:", phone)
+    console.log("[v0] Opening WhatsApp with phone:", phoneNumber)
 
     const montoFormateado = formatMontoArgentino(monto)
 
@@ -362,9 +352,9 @@ export default function REDvitto36() {
       platform === "g" ? "https://ganamosvip.xyz" : platform === "z" ? "https://casinozeus.cv/" : "No especificada"
 
     const msg = `Hola, ya envié mi carga.\n\nUsuario: ${username}\nContraseña: ${password}\nQuiero jugar en: \n${platformName}\n\nTitular: ${titular}\nMonto: $${montoFormateado}\nHora de transferencia: ${time}\nAdjunto comprobante.`
-    const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`
+    const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(msg)}`
     window.open(url, "_blank")
-  }, [titular, monto, formatMontoArgentino, password])
+  }, [titular, monto, formatMontoArgentino, password, phoneNumber])
 
   const openInfoModal = useCallback(() => {
     setShowInfoModal(true)
@@ -862,7 +852,7 @@ export default function REDvitto36() {
                   <CardTitle className="text-3xl text-primary font-semibold">Último paso!</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6 pb-8 pt-0">
-                  <div className="mx-0 my-0 space-y-3 py-0">
+                  <div className="space-3">
                     <div className="space-y-2">
                       <Label htmlFor="titular" className="text-base text-card-foreground font-semibold">
                         Nombre del titular:
