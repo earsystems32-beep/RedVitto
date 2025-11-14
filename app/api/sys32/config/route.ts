@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
 
 let serverConfig = {
   alias: "",
@@ -25,14 +24,11 @@ export async function GET() {
           updatedAt: new Date().toISOString(),
         }
 
-    console.log("[v0] Config GET:", config)
-
     return NextResponse.json({
       success: true,
       config,
     })
   } catch (error) {
-    console.error("[v0] Config GET error:", error)
     return NextResponse.json({ error: "Error del servidor" }, { status: 500 })
   }
 }
@@ -41,18 +37,13 @@ export async function POST(request: Request) {
   try {
     const adminPin = process.env.ADMIN_PIN
     if (!adminPin) {
-      console.log("[v0] Config POST: Server configuration error - no ADMIN_PIN")
       return NextResponse.json({ error: "Configuración del servidor incompleta" }, { status: 500 })
     }
 
     const body = await request.json()
     const { alias, phone, paymentType, userCreationEnabled, transferTimer, minAmount, pin } = body
 
-    console.log("[v0] Config POST received:", { alias, phone, paymentType, userCreationEnabled, transferTimer, minAmount, pinProvided: !!pin })
-
-    // Validate PIN
     if (!pin || pin !== adminPin) {
-      console.log("[v0] Config POST: No autorizado - invalid or missing PIN")
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
@@ -91,7 +82,6 @@ export async function POST(request: Request) {
       config: serverConfig,
     })
 
-    // Set configuration cookies for persistence
     response.cookies.set("cfg_alias", alias, {
       httpOnly: false,
       secure: process.env.NODE_ENV === "production",
@@ -140,11 +130,8 @@ export async function POST(request: Request) {
       path: "/",
     })
 
-    console.log("[v0] Config saved successfully:", serverConfig)
-
     return response
   } catch (error) {
-    console.error("[v0] Config POST error:", error)
     return NextResponse.json({ error: "Error del servidor" }, { status: 500 })
   }
 }

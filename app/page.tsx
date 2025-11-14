@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { Check, Copy, Crown, MessageCircle, CheckCircle, ArrowLeft, AlertCircle, Clock, DollarSign, Headphones, X, Hourglass, Gift, Shield, Users, AlertTriangle } from 'lucide-react'
+import { Check, Copy, Crown, MessageCircle, CheckCircle, ArrowLeft, AlertCircle, DollarSign, X, Hourglass, Gift, Shield, Users, AlertTriangle } from 'lucide-react'
 
 export default function REDvitto36() {
   const [step, setStep] = useState(1)
@@ -19,8 +19,6 @@ export default function REDvitto36() {
   const [transferTime, setTransferTime] = useState("")
   const [titular, setTitular] = useState("")
   const [monto, setMonto] = useState("")
-  const [copiedUser, setCopiedUser] = useState(false)
-  const [copiedPass, setCopiedPass] = useState(false)
   const [copiedAlias, setCopiedAlias] = useState(false)
   const [showToast, setShowToast] = useState(false)
   const [apodoError, setApodoError] = useState("")
@@ -35,11 +33,9 @@ export default function REDvitto36() {
   const [isBonusModalAnimating, setIsBonusModalAnimating] = useState(false)
   const [bonusAccepted, setBonusAccepted] = useState(false)
 
-  const [configLoaded, setConfigLoaded] = useState(false)
   const [serverAlias, setServerAlias] = useState("")
   const [serverPhone, setServerPhone] = useState("")
   const [serverPaymentType, setServerPaymentType] = useState<"alias" | "cbu">("alias")
-
   const [serverUserCreationEnabled, setServerUserCreationEnabled] = useState(true)
   const [serverTransferTimer, setServerTransferTimer] = useState(30)
   const [serverMinAmount, setServerMinAmount] = useState(2000)
@@ -60,90 +56,27 @@ export default function REDvitto36() {
             setServerUserCreationEnabled(data.config.userCreationEnabled ?? true)
             setServerTransferTimer(data.config.transferTimer ?? 30)
             setServerMinAmount(data.config.minAmount ?? 2000)
-            setConfigLoaded(true)
-            console.log("[v0] Config loaded from server:", data.config)
-            
-            // Also update localStorage to keep it in sync
-            if (typeof window !== "undefined") {
-              localStorage.setItem("cfg_alias", data.config.alias)
-              localStorage.setItem("cfg_phone", data.config.phone)
-              localStorage.setItem("cfg_payment_type", data.config.paymentType)
-              localStorage.setItem("cfg_user_creation_enabled", String(data.config.userCreationEnabled ?? true))
-              localStorage.setItem("cfg_transfer_timer", String(data.config.transferTimer ?? 30))
-              localStorage.setItem("cfg_min_amount", String(data.config.minAmount ?? 2000))
-            }
           }
         }
       } catch (error) {
-        console.error("[v0] Failed to load config from server:", error)
+        // Silent fail - use defaults
       }
     }
     
-    // Load immediately
     loadServerConfig()
-    
-    // Poll every 3 seconds to check for updates
-    const interval = setInterval(loadServerConfig, 3000)
+    const interval = setInterval(loadServerConfig, 5000) // Increased from 3s to 5s for better performance
     
     return () => clearInterval(interval)
   }, [])
 
   const password = "aaa111"
 
-  const getPaymentType = (): "alias" | "cbu" => {
-    if (serverPaymentType) {
-      return serverPaymentType
-    }
-    if (typeof window !== "undefined") {
-      const cookies = document.cookie.split(';').reduce((acc, cookie) => {
-        const [key, value] = cookie.trim().split('=')
-        acc[key] = value
-        return acc
-      }, {} as Record<string, string>)
-      
-      return (cookies.cfg_payment_type || localStorage.getItem("cfg_payment_type") || "alias") as "alias" | "cbu"
-    }
-    return "alias"
-  }
-
-  const getAlias = (): string => {
-    if (serverAlias) {
-      return serverAlias
-    }
-    if (typeof window !== "undefined") {
-      const cookies = document.cookie.split(';').reduce((acc, cookie) => {
-        const [key, value] = cookie.trim().split('=')
-        acc[key] = value
-        return acc
-      }, {} as Record<string, string>)
-      
-      return cookies.cfg_alias || localStorage.getItem("cfg_alias") || "DLHogar.mp"
-    }
-    return "DLHogar.mp"
-  }
-
-  const paymentType = serverPaymentType || getPaymentType()
+  const paymentType = serverPaymentType
   const paymentLabel = paymentType === "alias" ? "Alias" : "CBU"
-  const alias = serverAlias || getAlias()
-
-  const minAmount = String(serverMinAmount || 
-    (typeof window !== "undefined" ? Number(localStorage.getItem("cfg_min_amount")) || 2000 : 2000))
-
-  const userCreationEnabled = serverUserCreationEnabled ?? 
-    (typeof window !== "undefined" ? localStorage.getItem("cfg_user_creation_enabled") === "true" : true)
-
-  const phoneNumber = serverPhone || 
-    (typeof window !== "undefined" 
-      ? (document.cookie.split(';').reduce((acc, cookie) => {
-          const [key, value] = cookie.trim().split('=')
-          acc[key] = value
-          return acc
-        }, {} as Record<string, string>).cfg_phone || 
-        localStorage.getItem("cfg_phone") || 
-        sessionStorage.getItem("cfg_phone") ||
-        process.env.NEXT_PUBLIC_DEFAULT_PHONE ||
-        "543415481923")
-      : process.env.NEXT_PUBLIC_DEFAULT_PHONE || "543415481923")
+  const alias = serverAlias || "DLHogar.mp"
+  const minAmount = String(serverMinAmount)
+  const userCreationEnabled = serverUserCreationEnabled
+  const phoneNumber = serverPhone || process.env.NEXT_PUBLIC_DEFAULT_PHONE || "543415481923"
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -177,9 +110,7 @@ export default function REDvitto36() {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" })
 
     if (step === 4) {
-      const timerValue = serverTransferTimer || 
-        (typeof window !== "undefined" ? Number(localStorage.getItem("cfg_transfer_timer")) || 30 : 30)
-      setTransferButtonTimer(timerValue)
+      setTransferButtonTimer(serverTransferTimer)
       setBonusAccepted(false)
       setShowBonusModal(true)
       setTimeout(() => setIsBonusModalAnimating(true), 10)
@@ -320,22 +251,14 @@ export default function REDvitto36() {
     [apodo, digitos, plataforma, isApodoValid, isDigitosValid, isPlataformaValid, sanitizeName],
   )
 
-  const copyToClipboard = useCallback((text: string, type: "user" | "pass" | "alias") => {
+  const copyToClipboard = useCallback((text: string) => {
     navigator.clipboard.writeText(text)
-    if (type === "user") {
-      setCopiedUser(true)
-      setTimeout(() => setCopiedUser(false), 2000)
-    } else if (type === "pass") {
-      setCopiedPass(true)
-      setTimeout(() => setCopiedPass(false), 2000)
-    } else {
-      setCopiedAlias(true)
-      setShowToast(true)
-      setTimeout(() => {
-        setCopiedAlias(false)
-        setShowToast(false)
-      }, 1500)
-    }
+    setCopiedAlias(true)
+    setShowToast(true)
+    setTimeout(() => {
+      setCopiedAlias(false)
+      setShowToast(false)
+    }, 1500)
   }, [])
 
   const handleTransferConfirmation = useCallback(() => {
@@ -359,10 +282,7 @@ export default function REDvitto36() {
     }
 
     const time = localStorage.getItem("eds_transfer_time") || "sin hora registrada"
-    console.log("[v0] Opening WhatsApp with phone:", phoneNumber)
-
     const montoFormateado = formatMontoArgentino(monto)
-
     const platform = localStorage.getItem("eds_platform") || ""
     const platformName =
       platform === "g" ? "https://ganamosvip.xyz" : platform === "z" ? "https://casinozeus.cv/" : "No especificada"
@@ -817,7 +737,7 @@ export default function REDvitto36() {
                         className="h-12 font-mono bg-input border-border text-center text-primary font-bold pr-16 text-base"
                       />
                       <Button
-                        onClick={() => copyToClipboard(alias, "alias")}
+                        onClick={() => copyToClipboard(alias)}
                         variant="ghost"
                         size="icon"
                         className="absolute right-1 top-1/2 -translate-y-1/2 h-10 w-10 hover:bg-primary/20 transition-all duration-200"
@@ -871,7 +791,7 @@ export default function REDvitto36() {
                   <CardTitle className="text-3xl text-primary font-semibold">Último paso!</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6 pb-8 pt-0">
-                  <div className="space-3">
+                  <div className="space-3 py-0">
                     <div className="space-y-2">
                       <Label htmlFor="titular" className="text-base text-card-foreground font-semibold">
                         Nombre del titular:
@@ -905,7 +825,7 @@ export default function REDvitto36() {
                         className="text-base bg-input border-border focus:border-primary focus:ring-primary/50 transition-all duration-200 text-foreground placeholder:text-muted-foreground h-12 py-0"
                       />
                     </div>
-                    <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20 flex-row py-3 my-0">
+                    <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20 flex-row py-3 my-5">
                       <AlertCircle className="w-5 text-primary shrink-0 h-5 mb-0 border-0 mt-6" />
                       <p className="text-sm leading-relaxed text-primary font-medium">
                         Asegurate de ingresar los mismos datos de tu transferencia para evitar demoras en la
