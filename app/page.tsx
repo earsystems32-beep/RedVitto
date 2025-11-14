@@ -45,6 +45,7 @@ export default function REDvitto36() {
       try {
         const response = await fetch("/api/sys32/config", {
           credentials: "include",
+          cache: "no-store",
         })
         if (response.ok) {
           const data = await response.json()
@@ -54,19 +55,33 @@ export default function REDvitto36() {
             setServerPaymentType(data.config.paymentType)
             setConfigLoaded(true)
             console.log("[v0] Config loaded from server:", data.config)
+            
+            // Also update localStorage to keep it in sync
+            if (typeof window !== "undefined") {
+              localStorage.setItem("cfg_alias", data.config.alias)
+              localStorage.setItem("cfg_phone", data.config.phone)
+              localStorage.setItem("cfg_payment_type", data.config.paymentType)
+            }
           }
         }
       } catch (error) {
         console.error("[v0] Failed to load config from server:", error)
       }
     }
+    
+    // Load immediately
     loadServerConfig()
+    
+    // Poll every 3 seconds to check for updates
+    const interval = setInterval(loadServerConfig, 3000)
+    
+    return () => clearInterval(interval)
   }, [])
 
   const password = "aaa111"
 
   const getPaymentType = (): "alias" | "cbu" => {
-    if (configLoaded) {
+    if (serverPaymentType) {
       return serverPaymentType
     }
     if (typeof window !== "undefined") {
@@ -82,7 +97,7 @@ export default function REDvitto36() {
   }
 
   const getAlias = (): string => {
-    if (configLoaded && serverAlias) {
+    if (serverAlias) {
       return serverAlias
     }
     if (typeof window !== "undefined") {
@@ -97,14 +112,14 @@ export default function REDvitto36() {
     return "DLHogar.mp"
   }
 
-  const paymentType = getPaymentType()
+  const paymentType = serverPaymentType || getPaymentType()
   const paymentLabel = paymentType === "alias" ? "Alias" : "CBU"
-  const alias = getAlias()
+  const alias = serverAlias || getAlias()
 
   const minAmount = "2000"
 
   const getPhoneNumber = () => {
-    if (configLoaded && serverPhone) {
+    if (serverPhone) {
       console.log("[v0] Using server phone:", serverPhone)
       return serverPhone
     }
