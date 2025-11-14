@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Lock, LogOut, Save, Sparkles, Phone, CheckCircle2, AlertCircle } from "lucide-react"
+import { Lock, LogOut, Save, Sparkles, Phone, CheckCircle2, AlertCircle } from 'lucide-react'
 
 const SUPPORT_CONTACTS = [
   { name: "Lucia — P", phone: "5493417528062" },
@@ -194,7 +194,7 @@ export default function AdminPage() {
     validateCbu(value)
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const phoneValue = sanitizePhone(supportPhone.trim())
 
     if (!phoneValue || phoneValue.length < 8) {
@@ -230,19 +230,43 @@ export default function AdminPage() {
       }
     }
 
-    localStorage.setItem("cfg_alias", alias.trim())
-    localStorage.setItem("cfg_phone", phoneValue)
-    localStorage.setItem("cfg_payment_type", paymentType)
+    try {
+      const response = await fetch("/api/sys32/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          alias: alias.trim(),
+          phone: phoneValue,
+          paymentType: paymentType,
+        }),
+      })
 
-    setActiveAlias(alias.trim())
-    setActivePhone(phoneValue)
-    setActivePaymentType(paymentType)
-    const idx = Number(selectedContactIndex)
-    if (idx >= 0 && idx < SUPPORT_CONTACTS.length) {
-      setActiveContactName(SUPPORT_CONTACTS[idx].name)
+      if (!response.ok) {
+        throw new Error("Error al guardar la configuración")
+      }
+
+      const data = await response.json()
+
+      if (data.success) {
+        localStorage.setItem("cfg_alias", alias.trim())
+        localStorage.setItem("cfg_phone", phoneValue)
+        localStorage.setItem("cfg_payment_type", paymentType)
+
+        setActiveAlias(alias.trim())
+        setActivePhone(phoneValue)
+        setActivePaymentType(paymentType)
+        const idx = Number(selectedContactIndex)
+        if (idx >= 0 && idx < SUPPORT_CONTACTS.length) {
+          setActiveContactName(SUPPORT_CONTACTS[idx].name)
+        }
+
+        alert("Configuración guardada exitosamente. Se aplicará en todos los dispositivos.")
+      }
+    } catch (error) {
+      console.error("Save error:", error)
+      alert("Error al guardar en el servidor. Intentá de nuevo.")
     }
-
-    alert("Configuración guardada exitosamente")
   }
 
   return (

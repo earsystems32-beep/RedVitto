@@ -8,24 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import {
-  Check,
-  Copy,
-  Crown,
-  MessageCircle,
-  CheckCircle,
-  ArrowLeft,
-  AlertCircle,
-  Clock,
-  DollarSign,
-  Headphones,
-  X,
-  Hourglass,
-  Gift,
-  Shield,
-  Users,
-  AlertTriangle,
-} from "lucide-react"
+import { Check, Copy, Crown, MessageCircle, CheckCircle, ArrowLeft, AlertCircle, Clock, DollarSign, Headphones, X, Hourglass, Gift, Shield, Users, AlertTriangle } from 'lucide-react'
 
 export default function REDvitto36() {
   const [step, setStep] = useState(1)
@@ -52,19 +35,31 @@ export default function REDvitto36() {
   const [isBonusModalAnimating, setIsBonusModalAnimating] = useState(false)
   const [bonusAccepted, setBonusAccepted] = useState(false)
 
+
   const password = "aaa111"
 
   const getPaymentType = (): "alias" | "cbu" => {
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("cfg_payment_type")
-      return (stored as "alias" | "cbu") || "alias"
+      const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+        const [key, value] = cookie.trim().split('=')
+        acc[key] = value
+        return acc
+      }, {} as Record<string, string>)
+      
+      return (cookies.cfg_payment_type || localStorage.getItem("cfg_payment_type") || "alias") as "alias" | "cbu"
     }
     return "alias"
   }
 
   const getAlias = (): string => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("cfg_alias") || "DLHogar.mp"
+      const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+        const [key, value] = cookie.trim().split('=')
+        acc[key] = value
+        return acc
+      }, {} as Record<string, string>)
+      
+      return cookies.cfg_alias || localStorage.getItem("cfg_alias") || "DLHogar.mp"
     }
     return "DLHogar.mp"
   }
@@ -77,42 +72,21 @@ export default function REDvitto36() {
 
   const getPhoneNumber = () => {
     if (typeof window !== "undefined") {
+      const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+        const [key, value] = cookie.trim().split('=')
+        acc[key] = value
+        return acc
+      }, {} as Record<string, string>)
+      
+      const cookiePhone = cookies.cfg_phone
       const localPhone = localStorage.getItem("cfg_phone")
       const sessionPhone = sessionStorage.getItem("cfg_phone")
       const envPhone = process.env.NEXT_PUBLIC_DEFAULT_PHONE || "543415481923"
-      const phone = localPhone || sessionPhone || envPhone
-      console.log(
-        "[v0] Getting phone number:",
-        phone,
-        "| localStorage:",
-        localPhone,
-        "| sessionStorage:",
-        sessionPhone,
-        "| env:",
-        envPhone,
-      )
-      return phone
+      
+      return cookiePhone || localPhone || sessionPhone || envPhone
     }
     return process.env.NEXT_PUBLIC_DEFAULT_PHONE || "543415481923"
   }
-
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "cfg_phone" && e.newValue) {
-        console.log("[v0] Phone number updated from another tab:", e.newValue)
-        sessionStorage.setItem("cfg_phone", e.newValue)
-      }
-      if (e.key === "cfg_alias" && e.newValue) {
-        console.log("[v0] Alias updated from another tab:", e.newValue)
-      }
-      if (e.key === "cfg_payment_type" && e.newValue) {
-        console.log("[v0] Payment type updated from another tab:", e.newValue)
-      }
-    }
-
-    window.addEventListener("storage", handleStorageChange)
-    return () => window.removeEventListener("storage", handleStorageChange)
-  }, [])
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -132,11 +106,9 @@ export default function REDvitto36() {
       if (savedTime) {
         setTransferTime(savedTime)
       }
-
-      const currentPhone = localStorage.getItem("cfg_phone")
-      console.log("[v0] Current phone number on mount:", currentPhone || "using default")
     }
   }, [])
+
 
   useEffect(() => {
     if (step === 2) {
@@ -541,7 +513,7 @@ export default function REDvitto36() {
                       textShadow: "0 2px 8px rgba(217, 119, 6, 0.4)",
                     }}
                   >
-                    REDvitto36
+                    REDvitto36!
                   </h1>
                   <p className="text-lg md:text-xl text-muted-foreground font-normal text-center">
                     Creá tu usuario y empezá a jugar!
