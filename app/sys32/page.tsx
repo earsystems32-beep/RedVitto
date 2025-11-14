@@ -53,7 +53,7 @@ export default function AdminPage() {
   const [activePaymentType, setActivePaymentType] = useState<"alias" | "cbu">("alias")
   const [userCreationEnabled, setUserCreationEnabled] = useState(true)
   const [transferTimer, setTransferTimer] = useState(30)
-  const [minAmount, setMinAmount] = useState(2000)
+  const [minAmount, setMinAmount] = useState("2000")
   const [activeUserCreationEnabled, setActiveUserCreationEnabled] = useState(true)
   const [activeTransferTimer, setActiveTransferTimer] = useState(30)
   const [activeMinAmount, setActiveMinAmount] = useState(2000)
@@ -98,7 +98,7 @@ export default function AdminPage() {
     setPaymentType(savedPaymentType)
     setUserCreationEnabled(savedUserCreation)
     setTransferTimer(savedTimer)
-    setMinAmount(savedMinAmount)
+    setMinAmount(String(savedMinAmount))
 
     if (savedPhone) {
       const idx = SUPPORT_CONTACTS.findIndex((c) => c.phone === savedPhone)
@@ -254,8 +254,9 @@ export default function AdminPage() {
       return
     }
 
-    if (minAmount < 0) {
-      alert("El monto mínimo debe ser mayor o igual a 0")
+    const minAmountNum = Number(minAmount)
+    if (isNaN(minAmountNum) || minAmountNum < 0) {
+      alert("El monto mínimo debe ser un número válido mayor o igual a 0")
       return
     }
 
@@ -272,8 +273,8 @@ export default function AdminPage() {
           paymentType: paymentType,
           userCreationEnabled,
           transferTimer,
-          minAmount,
-          pin: adminPin, // Send PIN for authentication
+          minAmount: minAmountNum,
+          pin: adminPin,
         }),
       })
 
@@ -289,14 +290,14 @@ export default function AdminPage() {
         localStorage.setItem("cfg_payment_type", paymentType)
         localStorage.setItem("cfg_user_creation_enabled", String(userCreationEnabled))
         localStorage.setItem("cfg_transfer_timer", String(transferTimer))
-        localStorage.setItem("cfg_min_amount", String(minAmount))
+        localStorage.setItem("cfg_min_amount", String(minAmountNum))
 
         setActiveAlias(alias.trim())
         setActivePhone(phoneValue)
         setActivePaymentType(paymentType)
         setActiveUserCreationEnabled(userCreationEnabled)
         setActiveTransferTimer(transferTimer)
-        setActiveMinAmount(minAmount)
+        setActiveMinAmount(minAmountNum)
         
         const idx = Number(selectedContactIndex)
         if (idx >= 0 && idx < SUPPORT_CONTACTS.length) {
@@ -434,12 +435,15 @@ export default function AdminPage() {
                       </Label>
                       <Input
                         id="min-amount"
-                        type="number"
-                        min="0"
-                        step="100"
+                        type="text"
+                        inputMode="numeric"
                         value={minAmount}
-                        onChange={(e) => setMinAmount(Number(e.target.value))}
-                        className="h-12 text-base bg-purple-950/50 border-purple-500/30 focus:border-amber-400 focus:ring-amber-400/50 transition-all duration-200 text-white"
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, "")
+                          setMinAmount(value)
+                        }}
+                        placeholder="0"
+                        className="h-12 text-base bg-purple-950/50 border-purple-500/30 focus:border-amber-400 focus:ring-amber-400/50 transition-all duration-200 text-white placeholder:text-purple-300/50"
                       />
                       <p className="text-xs text-purple-300/70">
                         Monto mínimo requerido para realizar una carga
