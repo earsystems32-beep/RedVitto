@@ -261,11 +261,11 @@ export default function AdminPage() {
           setActiveContactName(SUPPORT_CONTACTS[idx].name)
         }
 
-        alert("Configuración guardada exitosamente. Se aplicará en todos los dispositivos.")
+        alert("Configuración guardada exitosamente en la nube. Se reflejará en todos los dispositivos.")
       }
     } catch (error) {
       console.error("Save error:", error)
-      alert("Error al guardar en el servidor. Intentá de nuevo.")
+      alert("Error al guardar. Intentá de nuevo.")
     }
   }
 

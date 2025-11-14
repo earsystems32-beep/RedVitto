@@ -35,10 +35,40 @@ export default function REDvitto36() {
   const [isBonusModalAnimating, setIsBonusModalAnimating] = useState(false)
   const [bonusAccepted, setBonusAccepted] = useState(false)
 
+  const [configLoaded, setConfigLoaded] = useState(false)
+  const [serverAlias, setServerAlias] = useState("")
+  const [serverPhone, setServerPhone] = useState("")
+  const [serverPaymentType, setServerPaymentType] = useState<"alias" | "cbu">("alias")
+
+  useEffect(() => {
+    const loadServerConfig = async () => {
+      try {
+        const response = await fetch("/api/sys32/config", {
+          credentials: "include",
+        })
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.config) {
+            setServerAlias(data.config.alias)
+            setServerPhone(data.config.phone)
+            setServerPaymentType(data.config.paymentType)
+            setConfigLoaded(true)
+            console.log("[v0] Config loaded from server:", data.config)
+          }
+        }
+      } catch (error) {
+        console.error("[v0] Failed to load config from server:", error)
+      }
+    }
+    loadServerConfig()
+  }, [])
 
   const password = "aaa111"
 
   const getPaymentType = (): "alias" | "cbu" => {
+    if (configLoaded) {
+      return serverPaymentType
+    }
     if (typeof window !== "undefined") {
       const cookies = document.cookie.split(';').reduce((acc, cookie) => {
         const [key, value] = cookie.trim().split('=')
@@ -52,6 +82,9 @@ export default function REDvitto36() {
   }
 
   const getAlias = (): string => {
+    if (configLoaded && serverAlias) {
+      return serverAlias
+    }
     if (typeof window !== "undefined") {
       const cookies = document.cookie.split(';').reduce((acc, cookie) => {
         const [key, value] = cookie.trim().split('=')
@@ -71,6 +104,10 @@ export default function REDvitto36() {
   const minAmount = "2000"
 
   const getPhoneNumber = () => {
+    if (configLoaded && serverPhone) {
+      console.log("[v0] Using server phone:", serverPhone)
+      return serverPhone
+    }
     if (typeof window !== "undefined") {
       const cookies = document.cookie.split(';').reduce((acc, cookie) => {
         const [key, value] = cookie.trim().split('=')
@@ -513,7 +550,7 @@ export default function REDvitto36() {
                       textShadow: "0 2px 8px rgba(217, 119, 6, 0.4)",
                     }}
                   >
-                    REDvitto36!
+                    REDvitto36
                   </h1>
                   <p className="text-lg md:text-xl text-muted-foreground font-normal text-center">
                     Creá tu usuario y empezá a jugar!

@@ -1,21 +1,51 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
+import { put, list } from "@vercel/blob"
+
+const CONFIG_BLOB_NAME = "app-config.json"
+
+async function getConfigFromBlob() {
+  try {
+    const { blobs } = await list({ prefix: CONFIG_BLOB_NAME })
+    
+    if (blobs.length === 0) {
+      // File doesn't exist, create it with defaults
+      const defaultConfig = {
+        alias: process.env.NEXT_PUBLIC_DEFAULT_ALIAS || "DLHogar.mp",
+        phone: process.env.NEXT_PUBLIC_DEFAULT_PHONE || "543415481923",
+        paymentType: "alias",
+        updatedAt: new Date().toISOString(),
+      }
+      
+      await put(CONFIG_BLOB_NAME, JSON.stringify(defaultConfig), {
+        access: "public",
+        contentType: "application/json",
+      })
+      
+      return defaultConfig
+    }
+    
+    // File exists, fetch and return it
+    const response = await fetch(blobs[0].url)
+    return await response.json()
+  } catch (error) {
+    console.error("Blob config error:", error)
+    // Return defaults on any error
+    return {
+      alias: process.env.NEXT_PUBLIC_DEFAULT_ALIAS || "DLHogar.mp",
+      phone: process.env.NEXT_PUBLIC_DEFAULT_PHONE || "543415481923",
+      paymentType: "alias",
+    }
+  }
+}
 
 export async function GET() {
   try {
-    const cookieStore = await cookies()
-    
-    const alias = cookieStore.get("cfg_alias")?.value || process.env.NEXT_PUBLIC_DEFAULT_ALIAS || "DLHogar.mp"
-    const phone = cookieStore.get("cfg_phone")?.value || process.env.NEXT_PUBLIC_DEFAULT_PHONE || "543415481923"
-    const paymentType = (cookieStore.get("cfg_payment_type")?.value as "alias" | "cbu") || "alias"
+    const config = await getConfigFromBlob()
 
     return NextResponse.json({
       success: true,
-      config: {
-        alias,
-        phone,
-        paymentType,
-      },
+      config,
     })
   } catch (error) {
     console.error("Config GET error:", error)
@@ -43,37 +73,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Tipo de pago inválido" }, { status: 400 })
     }
 
-    cookieStore.set("cfg_alias", alias, {
-      httpOnly: false, // Allow client-side reading
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 365, // 1 year
-      path: "/",
-    })
-    
-    cookieStore.set("cfg_phone", phone, {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 365,
-      path: "/",
-    })
-    
-    cookieStore.set("cfg_payment_type", paymentType, {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 365,
-      path: "/",
+    const config = { alias, phone, paymentType, updatedAt: new Date().toISOString() }
+    await put(CONFIG_BLOB_NAME, JSON.stringify(config), {
+      access: "public",
+      contentType: "application/json",
     })
 
     return NextResponse.json({
       success: true,
-      config: {
-        alias,
-        phone,
-        paymentType,
-      },
+      config,
     })
   } catch (error) {
     console.error("Config POST error:", error)
