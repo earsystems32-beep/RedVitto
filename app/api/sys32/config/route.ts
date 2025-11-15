@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { cookies } from "next/headers"
 
 let serverConfig = {
   alias: "",
@@ -12,17 +13,24 @@ let serverConfig = {
 
 export async function GET() {
   try {
-    const config = serverConfig.alias
-      ? serverConfig
-      : {
-          alias: process.env.NEXT_PUBLIC_DEFAULT_ALIAS || "DLHogar.mp",
-          phone: process.env.NEXT_PUBLIC_DEFAULT_PHONE || "543415481923",
-          paymentType: "alias" as "alias" | "cbu",
-          userCreationEnabled: true,
-          transferTimer: 30,
-          minAmount: 2000,
-          updatedAt: new Date().toISOString(),
-        }
+    const cookieStore = await cookies()
+    
+    const alias = cookieStore.get("cfg_alias")?.value || serverConfig.alias || process.env.NEXT_PUBLIC_DEFAULT_ALIAS || "DLHogar.mp"
+    const phone = cookieStore.get("cfg_phone")?.value || serverConfig.phone || process.env.NEXT_PUBLIC_DEFAULT_PHONE || "543415481923"
+    const paymentType = (cookieStore.get("cfg_payment_type")?.value as "alias" | "cbu") || serverConfig.paymentType || "alias"
+    const userCreationEnabled = cookieStore.get("cfg_user_creation_enabled")?.value === "false" ? false : (cookieStore.get("cfg_user_creation_enabled")?.value === "true" ? true : serverConfig.userCreationEnabled)
+    const transferTimer = Number(cookieStore.get("cfg_transfer_timer")?.value) || serverConfig.transferTimer || 30
+    const minAmount = Number(cookieStore.get("cfg_min_amount")?.value) || serverConfig.minAmount || 2000
+
+    const config = {
+      alias,
+      phone,
+      paymentType,
+      userCreationEnabled,
+      transferTimer,
+      minAmount,
+      updatedAt: serverConfig.updatedAt,
+    }
 
     return NextResponse.json({
       success: true,
