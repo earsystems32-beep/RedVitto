@@ -27,11 +27,11 @@ const isBlobAvailable = !!process.env.BLOB_READ_WRITE_TOKEN
 
 async function getConfigFromBlob(): Promise<ServerConfig> {
   if (!isBlobAvailable) {
-    return getConfigFromCookies()
+    return await getConfigFromCookies()
   }
 
   try {
-    const { put, list } = await import("@vercel/blob")
+    const { list } = await import("@vercel/blob")
     
     const { blobs } = await list({
       prefix: BLOB_CONFIG_PATH,
@@ -47,14 +47,14 @@ async function getConfigFromBlob(): Promise<ServerConfig> {
     const config: ServerConfig = await response.json()
     return config
   } catch (error) {
-    console.error("[Config] Error loading from Blob, falling back to cookies:", error)
-    return getConfigFromCookies()
+    console.error("[Config] Blob error, using cookies:", error)
+    return await getConfigFromCookies()
   }
 }
 
 async function saveConfigToBlob(config: ServerConfig): Promise<void> {
   if (!isBlobAvailable) {
-    saveConfigToCookies(config)
+    await saveConfigToCookies(config)
     return
   }
 
@@ -67,20 +67,20 @@ async function saveConfigToBlob(config: ServerConfig): Promise<void> {
       addRandomSuffix: true,
     })
     
-    saveConfigToCookies(config)
+    await saveConfigToCookies(config)
   } catch (error) {
-    console.error("[Config] Error saving to Blob, using cookies:", error)
-    saveConfigToCookies(config)
+    console.error("[Config] Blob save failed, using cookies:", error)
+    await saveConfigToCookies(config)
   }
 }
 
-function getConfigFromCookies(): ServerConfig {
-  const cookieStore = cookies()
+async function getConfigFromCookies(): Promise<ServerConfig> {
+  const cookieStore = await cookies()
   
   const alias = cookieStore.get("config_alias")?.value || DEFAULT_CONFIG.alias
   const phone = cookieStore.get("config_phone")?.value || DEFAULT_CONFIG.phone
   const paymentType = (cookieStore.get("config_paymentType")?.value as "alias" | "cbu") || DEFAULT_CONFIG.paymentType
-  const userCreationEnabled = cookieStore.get("config_userCreationEnabled")?.value === "true"
+  const userCreationEnabled = cookieStore.get("config_userCreationEnabled")?.value !== "false"
   const transferTimer = parseInt(cookieStore.get("config_transferTimer")?.value || String(DEFAULT_CONFIG.transferTimer))
   const minAmount = parseInt(cookieStore.get("config_minAmount")?.value || String(DEFAULT_CONFIG.minAmount))
   const updatedAt = cookieStore.get("config_updatedAt")?.value || DEFAULT_CONFIG.updatedAt
@@ -96,17 +96,17 @@ function getConfigFromCookies(): ServerConfig {
   }
 }
 
-function saveConfigToCookies(config: ServerConfig): void {
-  const cookieStore = cookies()
+async function saveConfigToCookies(config: ServerConfig): Promise<void> {
+  const cookieStore = await cookies()
   const maxAge = 365 * 24 * 60 * 60 // 1 year
   
-  cookieStore.set("config_alias", config.alias, { maxAge, sameSite: "lax" })
-  cookieStore.set("config_phone", config.phone, { maxAge, sameSite: "lax" })
-  cookieStore.set("config_paymentType", config.paymentType, { maxAge, sameSite: "lax" })
-  cookieStore.set("config_userCreationEnabled", String(config.userCreationEnabled), { maxAge, sameSite: "lax" })
-  cookieStore.set("config_transferTimer", String(config.transferTimer), { maxAge, sameSite: "lax" })
-  cookieStore.set("config_minAmount", String(config.minAmount), { maxAge, sameSite: "lax" })
-  cookieStore.set("config_updatedAt", config.updatedAt, { maxAge, sameSite: "lax" })
+  cookieStore.set("config_alias", config.alias, { maxAge, sameSite: "lax", path: "/" })
+  cookieStore.set("config_phone", config.phone, { maxAge, sameSite: "lax", path: "/" })
+  cookieStore.set("config_paymentType", config.paymentType, { maxAge, sameSite: "lax", path: "/" })
+  cookieStore.set("config_userCreationEnabled", String(config.userCreationEnabled), { maxAge, sameSite: "lax", path: "/" })
+  cookieStore.set("config_transferTimer", String(config.transferTimer), { maxAge, sameSite: "lax", path: "/" })
+  cookieStore.set("config_minAmount", String(config.minAmount), { maxAge, sameSite: "lax", path: "/" })
+  cookieStore.set("config_updatedAt", config.updatedAt, { maxAge, sameSite: "lax", path: "/" })
 }
 
 export async function GET() {
@@ -175,6 +175,9 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     console.error("[Config] POST error:", error)
-    return NextResponse.json({ error: "Error del servidor" }, { status: 500 })
+    return NextResponse.json({ 
+      error: "Error del servidor",
+      details: error instanceof Error ? error.message : "Error desconocido"
+    }, { status: 500 })
   }
 }
