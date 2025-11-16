@@ -32,6 +32,7 @@ export default function REDvitto36() {
   const [showBonusModal, setShowBonusModal] = useState(false)
   const [isBonusModalAnimating, setIsBonusModalAnimating] = useState(false)
   const [bonusAccepted, setBonusAccepted] = useState(false)
+  const [timerHasStarted, setTimerHasStarted] = useState(false)
 
   const [alias, setAlias] = useState("")
   const [minAmount, setMinAmount] = useState(2000)
@@ -107,31 +108,33 @@ export default function REDvitto36() {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" })
 
     if (step === 4) {
-      // Only reset timer if it's already at 0 or if bonus hasn't been accepted yet
-      setTransferButtonTimer((prev) => {
-        if (prev === 0 || !bonusAccepted) {
-          return originalTimerSeconds
-        }
-        return prev
-      })
-      setBonusAccepted(false)
-      
-      // Check localStorage before showing modal
-      if (typeof window !== "undefined") {
-        const bonusSeen = localStorage.getItem('bonus20_seen')
-        if (!bonusSeen) {
-          setShowBonusModal(true)
-          setTimeout(() => setIsBonusModalAnimating(true), 10)
-        } else {
-          // User already saw it, mark as accepted and start timer
-          setBonusAccepted(true)
+      if (!timerHasStarted) {
+        // First time entering step 4
+        setTransferButtonTimer(originalTimerSeconds)
+        setTimerHasStarted(true)
+        
+        // Check localStorage for bonus modal
+        if (typeof window !== "undefined") {
+          const bonusSeen = localStorage.getItem('bonus20_seen')
+          if (!bonusSeen) {
+            setShowBonusModal(true)
+            setTimeout(() => setIsBonusModalAnimating(true), 10)
+          } else {
+            // User already saw bonus, start timer immediately
+            setBonusAccepted(true)
+          }
         }
       }
     }
-  }, [step, originalTimerSeconds])
+    
+    if (step !== 4 && timerHasStarted) {
+      setTimerHasStarted(false)
+      setBonusAccepted(false)
+    }
+  }, [step, originalTimerSeconds, timerHasStarted])
 
   useEffect(() => {
-    if (step === 4 && bonusAccepted) {
+    if (step === 4 && bonusAccepted && transferButtonTimer > 0) {
       const interval = setInterval(() => {
         setTransferButtonTimer((prev) => {
           if (prev <= 1) {
