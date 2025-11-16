@@ -38,6 +38,7 @@ export default function REDvitto36() {
   const [userCreationEnabled, setUserCreationEnabled] = useState(true)
   const [phoneNumber, setPhoneNumber] = useState("543415481923")
   const [paymentType, setPaymentType] = useState<"alias" | "cbu">("alias")
+  const [originalTimerSeconds, setOriginalTimerSeconds] = useState(30)
 
   useEffect(() => {
     const loadServerConfig = async () => {
@@ -53,7 +54,9 @@ export default function REDvitto36() {
             setPhoneNumber(data.settings.phone)
             setPaymentType(data.settings.paymentType)
             setUserCreationEnabled(data.settings.createUserEnabled ?? true)
-            setTransferButtonTimer(data.settings.timerSeconds ?? 30)
+            const timerValue = data.settings.timerSeconds ?? 30
+            setTransferButtonTimer(timerValue)
+            setOriginalTimerSeconds(timerValue)
             setMinAmount(data.settings.minAmount ?? 2000)
           }
         }
@@ -105,7 +108,7 @@ export default function REDvitto36() {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" })
 
     if (step === 4) {
-      setTransferButtonTimer(transferButtonTimer)
+      setTransferButtonTimer(originalTimerSeconds)
       setBonusAccepted(false)
       
       // Check localStorage before showing modal
@@ -120,7 +123,7 @@ export default function REDvitto36() {
         }
       }
     }
-  }, [step, transferButtonTimer])
+  }, [step, originalTimerSeconds])
 
   useEffect(() => {
     if (step === 4 && bonusAccepted && transferButtonTimer > 0) {
