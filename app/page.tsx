@@ -41,6 +41,7 @@ export default function REDvitto36() {
   const [paymentType, setPaymentType] = useState<"alias" | "cbu">("alias")
   const [originalTimerSeconds, setOriginalTimerSeconds] = useState(30)
 
+  // Separated config loading to only set timer when not in use
   useEffect(() => {
     const loadServerConfig = async () => {
       try {
@@ -56,8 +57,13 @@ export default function REDvitto36() {
             setPaymentType(data.settings.paymentType)
             setUserCreationEnabled(data.settings.createUserEnabled ?? true)
             const timerValue = data.settings.timerSeconds ?? 30
-            setTransferButtonTimer(timerValue)
             setOriginalTimerSeconds(timerValue)
+            
+            // Only update transferButtonTimer if timer hasn't started yet
+            if (!timerHasStarted) {
+              setTransferButtonTimer(timerValue)
+            }
+            
             setMinAmount(data.settings.minAmount ?? 2000)
           }
         }
@@ -70,7 +76,7 @@ export default function REDvitto36() {
     const interval = setInterval(loadServerConfig, 10000)
     
     return () => clearInterval(interval)
-  }, [])
+  }, [timerHasStarted])
 
   const password = "aaa111"
 
@@ -107,32 +113,32 @@ export default function REDvitto36() {
 
     window.scrollTo({ top: 0, left: 0, behavior: "instant" })
 
+    // Initialize timer only on first entry to step 4
     if (step === 4) {
       if (!timerHasStarted) {
-        // First time entering step 4
         setTransferButtonTimer(originalTimerSeconds)
         setTimerHasStarted(true)
         
-        // Check localStorage for bonus modal
         if (typeof window !== "undefined") {
           const bonusSeen = localStorage.getItem('bonus20_seen')
           if (!bonusSeen) {
             setShowBonusModal(true)
             setTimeout(() => setIsBonusModalAnimating(true), 10)
           } else {
-            // User already saw bonus, start timer immediately
             setBonusAccepted(true)
           }
         }
       }
     }
     
+    // Reset timer state when leaving step 4
     if (step !== 4 && timerHasStarted) {
       setTimerHasStarted(false)
       setBonusAccepted(false)
     }
   }, [step, originalTimerSeconds, timerHasStarted])
 
+  // Countdown timer runs only when conditions are met
   useEffect(() => {
     if (step === 4 && bonusAccepted && transferButtonTimer > 0) {
       const interval = setInterval(() => {
