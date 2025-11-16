@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { put, head, list } from "@vercel/blob"
+import { cookies } from "next/headers"
 
 const BLOB_CONFIG_PATH = "system-config.json"
 
@@ -23,41 +23,90 @@ const DEFAULT_CONFIG: ServerConfig = {
   updatedAt: new Date().toISOString(),
 }
 
+const isBlobAvailable = !!process.env.BLOB_READ_WRITE_TOKEN
+
 async function getConfigFromBlob(): Promise<ServerConfig> {
+  if (!isBlobAvailable) {
+    return getConfigFromCookies()
+  }
+
   try {
-    // Check if config file exists in Blob storage
+    const { put, list } = await import("@vercel/blob")
+    
     const { blobs } = await list({
       prefix: BLOB_CONFIG_PATH,
       limit: 1,
     })
 
     if (blobs.length === 0) {
-      // Config doesn't exist, create it with defaults
       await saveConfigToBlob(DEFAULT_CONFIG)
       return DEFAULT_CONFIG
     }
 
-    // Fetch existing config
     const response = await fetch(blobs[0].url)
     const config: ServerConfig = await response.json()
     return config
   } catch (error) {
-    console.error("[Config] Error loading from Blob:", error)
-    return DEFAULT_CONFIG
+    console.error("[Config] Error loading from Blob, falling back to cookies:", error)
+    return getConfigFromCookies()
   }
 }
 
 async function saveConfigToBlob(config: ServerConfig): Promise<void> {
+  if (!isBlobAvailable) {
+    saveConfigToCookies(config)
+    return
+  }
+
   try {
+    const { put } = await import("@vercel/blob")
+    
     await put(BLOB_CONFIG_PATH, JSON.stringify(config, null, 2), {
       access: "public",
       contentType: "application/json",
       addRandomSuffix: true,
     })
+    
+    saveConfigToCookies(config)
   } catch (error) {
-    console.error("[Config] Error saving to Blob:", error)
-    throw error
+    console.error("[Config] Error saving to Blob, using cookies:", error)
+    saveConfigToCookies(config)
   }
+}
+
+function getConfigFromCookies(): ServerConfig {
+  const cookieStore = cookies()
+  
+  const alias = cookieStore.get("config_alias")?.value || DEFAULT_CONFIG.alias
+  const phone = cookieStore.get("config_phone")?.value || DEFAULT_CONFIG.phone
+  const paymentType = (cookieStore.get("config_paymentType")?.value as "alias" | "cbu") || DEFAULT_CONFIG.paymentType
+  const userCreationEnabled = cookieStore.get("config_userCreationEnabled")?.value === "true"
+  const transferTimer = parseInt(cookieStore.get("config_transferTimer")?.value || String(DEFAULT_CONFIG.transferTimer))
+  const minAmount = parseInt(cookieStore.get("config_minAmount")?.value || String(DEFAULT_CONFIG.minAmount))
+  const updatedAt = cookieStore.get("config_updatedAt")?.value || DEFAULT_CONFIG.updatedAt
+
+  return {
+    alias,
+    phone,
+    paymentType,
+    userCreationEnabled,
+    transferTimer,
+    minAmount,
+    updatedAt,
+  }
+}
+
+function saveConfigToCookies(config: ServerConfig): void {
+  const cookieStore = cookies()
+  const maxAge = 365 * 24 * 60 * 60 // 1 year
+  
+  cookieStore.set("config_alias", config.alias, { maxAge, sameSite: "lax" })
+  cookieStore.set("config_phone", config.phone, { maxAge, sameSite: "lax" })
+  cookieStore.set("config_paymentType", config.paymentType, { maxAge, sameSite: "lax" })
+  cookieStore.set("config_userCreationEnabled", String(config.userCreationEnabled), { maxAge, sameSite: "lax" })
+  cookieStore.set("config_transferTimer", String(config.transferTimer), { maxAge, sameSite: "lax" })
+  cookieStore.set("config_minAmount", String(config.minAmount), { maxAge, sameSite: "lax" })
+  cookieStore.set("config_updatedAt", config.updatedAt, { maxAge, sameSite: "lax" })
 }
 
 export async function GET() {
