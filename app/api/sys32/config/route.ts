@@ -52,6 +52,7 @@ async function saveConfigToBlob(config: ServerConfig): Promise<void> {
     await put(BLOB_CONFIG_PATH, JSON.stringify(config, null, 2), {
       access: "public",
       contentType: "application/json",
+      addRandomSuffix: true,
     })
   } catch (error) {
     console.error("[Config] Error saving to Blob:", error)
