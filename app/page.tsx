@@ -107,8 +107,18 @@ export default function REDvitto36() {
     if (step === 4) {
       setTransferButtonTimer(transferButtonTimer)
       setBonusAccepted(false)
-      setShowBonusModal(true)
-      setTimeout(() => setIsBonusModalAnimating(true), 10)
+      
+      // Check localStorage before showing modal
+      if (typeof window !== "undefined") {
+        const bonusSeen = localStorage.getItem('bonus20_seen')
+        if (!bonusSeen) {
+          setShowBonusModal(true)
+          setTimeout(() => setIsBonusModalAnimating(true), 10)
+        } else {
+          // User already saw it, mark as accepted and start timer
+          setBonusAccepted(true)
+        }
+      }
     }
   }, [step, transferButtonTimer])
 
@@ -321,7 +331,29 @@ export default function REDvitto36() {
     setTimeout(() => {
       setShowBonusModal(false)
       setBonusAccepted(true)
+      
+      // Save to localStorage that user has seen the bonus modal
+      if (typeof window !== "undefined") {
+        localStorage.setItem('bonus20_seen', 'true')
+      }
     }, 300)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      // Check for reset query parameter (for testing)
+      const urlParams = new URLSearchParams(window.location.search)
+      if (urlParams.get('resetBonus') === '1') {
+        localStorage.removeItem('bonus20_seen')
+      }
+      
+      // Check if user has already seen the bonus modal
+      const bonusSeen = localStorage.getItem('bonus20_seen')
+      if (!bonusSeen) {
+        // User hasn't seen it, will show on step 4
+        // Do nothing here, let step 4 logic handle it
+      }
+    }
   }, [])
 
   return (
