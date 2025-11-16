@@ -60,24 +60,8 @@ export default function AdminPage() {
   const [adminPin, setAdminPin] = useState("") // Store PIN for config saves
 
   useEffect(() => {
-    checkAuth()
+    // No auto-check needed, user must enter PIN
   }, [])
-
-  const checkAuth = async () => {
-    try {
-      const response = await fetch("/api/sys32/check", {
-        credentials: "include",
-      })
-      const data = await response.json()
-
-      if (data.authenticated) {
-        setIsAuthenticated(true)
-        loadConfig()
-      }
-    } catch (error) {
-      console.error("Auth check failed:", error)
-    }
-  }
 
   const loadConfig = async () => {
     try {
@@ -137,57 +121,50 @@ export default function AdminPage() {
   }
 
   const handleLogin = async () => {
+    if (!pinInput.trim()) {
+      alert("Ingresá el PIN de administrador")
+      return
+    }
+
     setIsLoading(true)
     try {
-      const response = await fetch("/api/sys32/verify", {
+      const testPIN = pinInput.trim()
+      
+      const response = await fetch("/api/admin/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ pin: pinInput.trim() }),
+        body: JSON.stringify({ pin: testPIN }),
       })
 
-      if (!response.ok) {
-        try {
-          const data = await response.json()
-          alert(data.message || "Error al iniciar sesión")
-        } catch {
-          alert("Error de conexión. Intentá de nuevo.")
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          setIsAuthenticated(true)
+          setAdminPin(testPIN)
+          await loadConfig()
+          setPinInput("")
+        } else {
+          alert("PIN incorrecto")
+          setPinInput("")
         }
-        setPinInput("")
-        return
-      }
-
-      const data = await response.json()
-
-      if (data.success) {
-        setIsAuthenticated(true)
-        setAdminPin(pinInput.trim()) // Store PIN for later use
-        loadConfig()
-        setPinInput("")
       } else {
-        alert(data.message || "PIN incorrecto")
+        const data = await response.json()
+        alert(data.error || "PIN incorrecto o error de conexión")
         setPinInput("")
       }
     } catch (error) {
       alert("Error de conexión. Intentá de nuevo.")
       console.error("Login error:", error)
+      setPinInput("")
     } finally {
       setIsLoading(false)
     }
   }
 
   const handleLogout = async () => {
-    try {
-      await fetch("/api/sys32/logout", {
-        method: "POST",
-        credentials: "include",
-      })
-      setIsAuthenticated(false)
-      setPinInput("")
-      setAdminPin("") // Clear stored PIN
-    } catch (error) {
-      console.error("Logout error:", error)
-    }
+    setIsAuthenticated(false)
+    setPinInput("")
+    setAdminPin("")
   }
 
   const validateCbu = (value: string): boolean => {
