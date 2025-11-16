@@ -44,7 +44,7 @@ export default function AdminPage() {
   const [alias, setAlias] = useState("")
   const [paymentType, setPaymentType] = useState<"alias" | "cbu">("alias")
   const [cbuError, setCbuError] = useState("")
-  const [selectedContactIndex, setSelectedContactIndex] = useState<string>("")
+  const [selectedContactIndex, setSelectedContactIndex] = useState<string>("0")
   const [supportPhone, setSupportPhone] = useState("")
   const [isPhoneEditable, setIsPhoneEditable] = useState(false)
   const [activeAlias, setActiveAlias] = useState("")
@@ -75,18 +75,18 @@ export default function AdminPage() {
         if (data.success && data.settings) {
           const settings = data.settings
           
-          setActiveAlias(settings.alias)
-          setActivePhone(settings.phone)
-          setActivePaymentType(settings.paymentType)
-          setActiveUserCreationEnabled(settings.createUserEnabled)
-          setActiveTransferTimer(settings.timerSeconds)
-          setActiveMinAmount(settings.minAmount)
+          setActiveAlias(settings.alias || "")
+          setActivePhone(settings.phone || "")
+          setActivePaymentType(settings.paymentType || "alias")
+          setActiveUserCreationEnabled(settings.createUserEnabled ?? true)
+          setActiveTransferTimer(settings.timerSeconds ?? 30)
+          setActiveMinAmount(settings.minAmount ?? 2000)
 
-          setAlias(settings.alias)
-          setPaymentType(settings.paymentType)
-          setUserCreationEnabled(settings.createUserEnabled)
-          setTransferTimer(settings.timerSeconds)
-          setMinAmount(String(settings.minAmount))
+          setAlias(settings.alias || "")
+          setPaymentType(settings.paymentType || "alias")
+          setUserCreationEnabled(settings.createUserEnabled ?? true)
+          setTransferTimer(settings.timerSeconds ?? 30)
+          setMinAmount(String(settings.minAmount ?? 2000))
 
           if (settings.phone) {
             const idx = SUPPORT_CONTACTS.findIndex((c) => c.phone === settings.phone)
@@ -101,6 +101,11 @@ export default function AdminPage() {
               setIsPhoneEditable(true)
               setActiveContactName("Otro / Personalizado")
             }
+          } else {
+            setSelectedContactIndex("0")
+            setSupportPhone(SUPPORT_CONTACTS[0]?.phone || "")
+            setIsPhoneEditable(false)
+            setActiveContactName(SUPPORT_CONTACTS[0]?.name || "")
           }
         }
       }
