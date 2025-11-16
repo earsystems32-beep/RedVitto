@@ -22,7 +22,6 @@ const DEFAULT_CONFIG: ServerConfig = {
 }
 
 let globalConfig: ServerConfig = { ...DEFAULT_CONFIG }
-let useSupabase = false
 
 function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -42,39 +41,34 @@ function getSupabaseClient() {
 async function getConfig(): Promise<ServerConfig> {
   const supabase = getSupabaseClient()
   
-  if (!supabase) {
-    return globalConfig
-  }
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from("system_config")
+        .select("*")
+        .eq("id", 1)
+        .single()
 
-  try {
-    const { data, error } = await supabase
-      .from("system_config")
-      .select("*")
-      .eq("id", 1)
-      .single()
-
-    if (error) {
-      // Table doesn't exist or other error, use memory
-      return globalConfig
-    }
-
-    if (data) {
-      useSupabase = true
-      globalConfig = {
-        alias: data.alias,
-        phone: data.phone,
-        paymentType: data.payment_type,
-        userCreationEnabled: data.user_creation_enabled,
-        transferTimer: data.transfer_timer,
-        minAmount: data.min_amount,
-        updatedAt: data.updated_at,
+      if (!error && data) {
+        // Successfully read from Supabase, update cache and return
+        globalConfig = {
+          alias: data.alias,
+          phone: data.phone,
+          paymentType: data.payment_type,
+          userCreationEnabled: data.user_creation_enabled,
+          transferTimer: data.transfer_timer,
+          minAmount: data.min_amount,
+          updatedAt: data.updated_at,
+        }
+        return globalConfig
       }
+    } catch {
+      // Supabase failed, fallback to memory
     }
-
-    return globalConfig
-  } catch {
-    return globalConfig
   }
+
+  // Fallback to memory (v0 or Supabase not available)
+  return globalConfig
 }
 
 async function saveConfig(config: ServerConfig): Promise<void> {
@@ -82,40 +76,36 @@ async function saveConfig(config: ServerConfig): Promise<void> {
   
   const supabase = getSupabaseClient()
   
-  if (!supabase) {
-    return
-  }
-
-  try {
-    const { error } = await supabase
-      .from("system_config")
-      .upsert({
-        id: 1,
-        alias: config.alias,
-        phone: config.phone,
-        payment_type: config.paymentType,
-        user_creation_enabled: config.userCreationEnabled,
-        transfer_timer: config.transferTimer,
-        min_amount: config.minAmount,
-        updated_at: config.updatedAt,
-      })
-
-    if (!error) {
-      useSupabase = true
+  if (supabase) {
+    try {
+      await supabase
+        .from("system_config")
+        .upsert({
+          id: 1,
+          alias: config.alias,
+          phone: config.phone,
+          payment_type: config.paymentType,
+          user_creation_enabled: config.userCreationEnabled,
+          transfer_timer: config.transferTimer,
+          min_amount: config.minAmount,
+          updated_at: config.updatedAt,
+        })
+      // Successfully saved to Supabase
+    } catch {
+      // Silently fail and rely on memory backup
     }
-  } catch {
-    // Silently fail and use memory
   }
 }
 
 export async function GET() {
   try {
     const config = await getConfig()
+    const supabase = getSupabaseClient()
     
     return NextResponse.json({
       success: true,
       config,
-      storage: useSupabase ? "supabase" : "memory"
+      storage: supabase ? "supabase" : "memory"
     })
   } catch (error) {
     console.error("[Config] GET error:", error)
@@ -168,11 +158,12 @@ export async function POST(request: Request) {
     }
 
     await saveConfig(newConfig)
+    const supabase = getSupabaseClient()
 
     return NextResponse.json({
       success: true,
       config: newConfig,
-      storage: useSupabase ? "supabase" : "memory"
+      storage: supabase ? "supabase" : "memory"
     })
   } catch (error) {
     console.error("[Config] POST error:", error)
