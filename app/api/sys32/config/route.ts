@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
-
-const BLOB_CONFIG_PATH = "system-config.json"
+import { createClient } from "@supabase/supabase-js"
 
 interface ServerConfig {
   alias: string
@@ -23,94 +21,101 @@ const DEFAULT_CONFIG: ServerConfig = {
   updatedAt: new Date().toISOString(),
 }
 
-let globalConfig: ServerConfig = {
-  alias: process.env.NEXT_PUBLIC_DEFAULT_ALIAS || "DLHogar.mp",
-  phone: process.env.NEXT_PUBLIC_DEFAULT_PHONE || "543415481923",
-  paymentType: "alias",
-  userCreationEnabled: true,
-  transferTimer: 30,
-  minAmount: 2000,
-  updatedAt: new Date().toISOString(),
-}
+let globalConfig: ServerConfig = { ...DEFAULT_CONFIG }
+let useSupabase = false
 
-const isBlobAvailable = !!process.env.BLOB_READ_WRITE_TOKEN
+function getSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-async function getConfigFromBlob(): Promise<ServerConfig> {
-  if (!isBlobAvailable) {
-    return await getConfigFromCookies()
+  if (!supabaseUrl || !supabaseKey) {
+    return null
   }
 
   try {
-    const { list } = await import("@vercel/blob")
-    
-    const { blobs } = await list({
-      prefix: BLOB_CONFIG_PATH,
-      limit: 1,
-    })
-
-    if (blobs.length === 0) {
-      await saveConfigToBlob(DEFAULT_CONFIG)
-      return DEFAULT_CONFIG
-    }
-
-    const response = await fetch(blobs[0].url)
-    const config: ServerConfig = await response.json()
-    return config
-  } catch (error) {
-    console.error("[Config] Blob error, using cookies:", error)
-    return await getConfigFromCookies()
+    return createClient(supabaseUrl, supabaseKey)
+  } catch {
+    return null
   }
 }
 
-async function saveConfigToBlob(config: ServerConfig): Promise<void> {
-  if (!isBlobAvailable) {
-    await saveConfigToCookies(config)
+async function getConfig(): Promise<ServerConfig> {
+  const supabase = getSupabaseClient()
+  
+  if (!supabase) {
+    return globalConfig
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("system_config")
+      .select("*")
+      .eq("id", 1)
+      .single()
+
+    if (error) {
+      // Table doesn't exist or other error, use memory
+      return globalConfig
+    }
+
+    if (data) {
+      useSupabase = true
+      globalConfig = {
+        alias: data.alias,
+        phone: data.phone,
+        paymentType: data.payment_type,
+        userCreationEnabled: data.user_creation_enabled,
+        transferTimer: data.transfer_timer,
+        minAmount: data.min_amount,
+        updatedAt: data.updated_at,
+      }
+    }
+
+    return globalConfig
+  } catch {
+    return globalConfig
+  }
+}
+
+async function saveConfig(config: ServerConfig): Promise<void> {
+  globalConfig = config
+  
+  const supabase = getSupabaseClient()
+  
+  if (!supabase) {
     return
   }
 
   try {
-    const { put } = await import("@vercel/blob")
-    
-    await put(BLOB_CONFIG_PATH, JSON.stringify(config, null, 2), {
-      access: "public",
-      contentType: "application/json",
-      addRandomSuffix: true,
-    })
-    
-    await saveConfigToCookies(config)
-  } catch (error) {
-    console.error("[Config] Blob save failed, using cookies:", error)
-    await saveConfigToCookies(config)
+    const { error } = await supabase
+      .from("system_config")
+      .upsert({
+        id: 1,
+        alias: config.alias,
+        phone: config.phone,
+        payment_type: config.paymentType,
+        user_creation_enabled: config.userCreationEnabled,
+        transfer_timer: config.transferTimer,
+        min_amount: config.minAmount,
+        updated_at: config.updatedAt,
+      })
+
+    if (!error) {
+      useSupabase = true
+    }
+  } catch {
+    // Silently fail and use memory
   }
-}
-
-async function getConfigFromCookies(): Promise<ServerConfig> {
-  return globalConfig
-}
-
-async function saveConfigToCookies(config: ServerConfig): Promise<void> {
-  globalConfig = { ...config, updatedAt: new Date().toISOString() }
-  
-  // Also save cookies as backup
-  const cookieStore = await cookies()
-  const maxAge = 365 * 24 * 60 * 60
-
-  cookieStore.set("config_alias", config.alias, { maxAge, sameSite: "lax", path: "/" })
-  cookieStore.set("config_phone", config.phone, { maxAge, sameSite: "lax", path: "/" })
-  cookieStore.set("config_paymentType", config.paymentType, { maxAge, sameSite: "lax", path: "/" })
-  cookieStore.set("config_userCreationEnabled", String(config.userCreationEnabled), { maxAge, sameSite: "lax", path: "/" })
-  cookieStore.set("config_transferTimer", String(config.transferTimer), { maxAge, sameSite: "lax", path: "/" })
-  cookieStore.set("config_minAmount", String(config.minAmount), { maxAge, sameSite: "lax", path: "/" })
-  cookieStore.set("config_updatedAt", config.updatedAt, { maxAge, sameSite: "lax", path: "/" })
 }
 
 export async function GET() {
   try {
-    const config = await getConfigFromBlob()
-
+    const config = await getConfig()
+    
     return NextResponse.json({
       success: true,
       config,
+      storage: useSupabase ? "supabase" : "memory"
     })
   } catch (error) {
     console.error("[Config] GET error:", error)
@@ -162,11 +167,12 @@ export async function POST(request: Request) {
       updatedAt: new Date().toISOString(),
     }
 
-    await saveConfigToBlob(newConfig)
+    await saveConfig(newConfig)
 
     return NextResponse.json({
       success: true,
       config: newConfig,
+      storage: useSupabase ? "supabase" : "memory"
     })
   } catch (error) {
     console.error("[Config] POST error:", error)
