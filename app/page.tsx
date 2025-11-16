@@ -43,7 +43,7 @@ export default function REDvitto36() {
   useEffect(() => {
     const loadServerConfig = async () => {
       try {
-        const response = await fetch("/api/sys32/config", {
+        const response = await fetch(`/api/sys32/config?t=${Date.now()}`, {
           credentials: "include",
           cache: "no-store",
         })
@@ -64,7 +64,7 @@ export default function REDvitto36() {
     }
     
     loadServerConfig()
-    const interval = setInterval(loadServerConfig, 10000) // Optimized from 5s to 10s
+    const interval = setInterval(loadServerConfig, 3000)
     
     return () => clearInterval(interval)
   }, [])

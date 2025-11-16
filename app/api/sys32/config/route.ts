@@ -23,6 +23,16 @@ const DEFAULT_CONFIG: ServerConfig = {
   updatedAt: new Date().toISOString(),
 }
 
+let globalConfig: ServerConfig = {
+  alias: process.env.NEXT_PUBLIC_DEFAULT_ALIAS || "DLHogar.mp",
+  phone: process.env.NEXT_PUBLIC_DEFAULT_PHONE || "543415481923",
+  paymentType: "alias",
+  userCreationEnabled: true,
+  transferTimer: 30,
+  minAmount: 2000,
+  updatedAt: new Date().toISOString(),
+}
+
 const isBlobAvailable = !!process.env.BLOB_READ_WRITE_TOKEN
 
 async function getConfigFromBlob(): Promise<ServerConfig> {
@@ -75,31 +85,16 @@ async function saveConfigToBlob(config: ServerConfig): Promise<void> {
 }
 
 async function getConfigFromCookies(): Promise<ServerConfig> {
-  const cookieStore = await cookies()
-  
-  const alias = cookieStore.get("config_alias")?.value || DEFAULT_CONFIG.alias
-  const phone = cookieStore.get("config_phone")?.value || DEFAULT_CONFIG.phone
-  const paymentType = (cookieStore.get("config_paymentType")?.value as "alias" | "cbu") || DEFAULT_CONFIG.paymentType
-  const userCreationEnabled = cookieStore.get("config_userCreationEnabled")?.value !== "false"
-  const transferTimer = parseInt(cookieStore.get("config_transferTimer")?.value || String(DEFAULT_CONFIG.transferTimer))
-  const minAmount = parseInt(cookieStore.get("config_minAmount")?.value || String(DEFAULT_CONFIG.minAmount))
-  const updatedAt = cookieStore.get("config_updatedAt")?.value || DEFAULT_CONFIG.updatedAt
-
-  return {
-    alias,
-    phone,
-    paymentType,
-    userCreationEnabled,
-    transferTimer,
-    minAmount,
-    updatedAt,
-  }
+  return globalConfig
 }
 
 async function saveConfigToCookies(config: ServerConfig): Promise<void> {
-  const cookieStore = await cookies()
-  const maxAge = 365 * 24 * 60 * 60 // 1 year
+  globalConfig = { ...config, updatedAt: new Date().toISOString() }
   
+  // Also save cookies as backup
+  const cookieStore = await cookies()
+  const maxAge = 365 * 24 * 60 * 60
+
   cookieStore.set("config_alias", config.alias, { maxAge, sameSite: "lax", path: "/" })
   cookieStore.set("config_phone", config.phone, { maxAge, sameSite: "lax", path: "/" })
   cookieStore.set("config_paymentType", config.paymentType, { maxAge, sameSite: "lax", path: "/" })
