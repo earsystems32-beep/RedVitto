@@ -97,7 +97,6 @@ export default function REDvitto36() {
     }
   }, [])
 
-
   useEffect(() => {
     if (step === 2) {
       setIsDropdownOpen(true)
@@ -108,7 +107,13 @@ export default function REDvitto36() {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" })
 
     if (step === 4) {
-      setTransferButtonTimer(originalTimerSeconds)
+      // Only reset timer if it's already at 0 or if bonus hasn't been accepted yet
+      setTransferButtonTimer((prev) => {
+        if (prev === 0 || !bonusAccepted) {
+          return originalTimerSeconds
+        }
+        return prev
+      })
       setBonusAccepted(false)
       
       // Check localStorage before showing modal
@@ -126,7 +131,7 @@ export default function REDvitto36() {
   }, [step, originalTimerSeconds])
 
   useEffect(() => {
-    if (step === 4 && bonusAccepted && transferButtonTimer > 0) {
+    if (step === 4 && bonusAccepted) {
       const interval = setInterval(() => {
         setTransferButtonTimer((prev) => {
           if (prev <= 1) {
@@ -139,7 +144,7 @@ export default function REDvitto36() {
 
       return () => clearInterval(interval)
     }
-  }, [step, bonusAccepted, transferButtonTimer])
+  }, [step, bonusAccepted])
 
   const isApodoValid = useCallback((value: string) => {
     return /^[A-Za-zÀ-ÿ\s]+$/.test(value.trim())
