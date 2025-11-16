@@ -33,29 +33,28 @@ export default function REDvitto36() {
   const [isBonusModalAnimating, setIsBonusModalAnimating] = useState(false)
   const [bonusAccepted, setBonusAccepted] = useState(false)
 
-  const [serverAlias, setServerAlias] = useState("")
-  const [serverPhone, setServerPhone] = useState("")
-  const [serverPaymentType, setServerPaymentType] = useState<"alias" | "cbu">("alias")
-  const [serverUserCreationEnabled, setServerUserCreationEnabled] = useState(true)
-  const [serverTransferTimer, setServerTransferTimer] = useState(30)
-  const [serverMinAmount, setServerMinAmount] = useState(2000)
+  const [alias, setAlias] = useState("")
+  const [minAmount, setMinAmount] = useState(2000)
+  const [userCreationEnabled, setUserCreationEnabled] = useState(true)
+  const [phoneNumber, setPhoneNumber] = useState("543415481923")
+  const [paymentType, setPaymentType] = useState<"alias" | "cbu">("alias")
 
   useEffect(() => {
     const loadServerConfig = async () => {
       try {
-        const response = await fetch(`/api/sys32/config?t=${Date.now()}`, {
+        const response = await fetch(`/api/admin/settings?t=${Date.now()}`, {
           credentials: "include",
           cache: "no-store",
         })
         if (response.ok) {
           const data = await response.json()
-          if (data.success && data.config) {
-            setServerAlias(data.config.alias)
-            setServerPhone(data.config.phone)
-            setServerPaymentType(data.config.paymentType)
-            setServerUserCreationEnabled(data.config.userCreationEnabled ?? true)
-            setServerTransferTimer(data.config.transferTimer ?? 30)
-            setServerMinAmount(data.config.minAmount ?? 2000)
+          if (data.success && data.settings) {
+            setAlias(data.settings.alias)
+            setPhoneNumber(data.settings.phone)
+            setPaymentType(data.settings.paymentType)
+            setUserCreationEnabled(data.settings.createUserEnabled ?? true)
+            setTransferButtonTimer(data.settings.timerSeconds ?? 30)
+            setMinAmount(data.settings.minAmount ?? 2000)
           }
         }
       } catch (error) {
@@ -64,19 +63,15 @@ export default function REDvitto36() {
     }
     
     loadServerConfig()
-    const interval = setInterval(loadServerConfig, 3000)
+    const interval = setInterval(loadServerConfig, 10000)
     
     return () => clearInterval(interval)
   }, [])
 
   const password = "aaa111"
 
-  const paymentType = serverPaymentType
   const paymentLabel = paymentType === "alias" ? "Alias" : "CBU"
-  const alias = serverAlias || "DLHogar.mp"
-  const minAmount = String(serverMinAmount)
-  const userCreationEnabled = serverUserCreationEnabled
-  const phoneNumber = serverPhone || process.env.NEXT_PUBLIC_DEFAULT_PHONE || "543415481923"
+  const minAmountStr = String(minAmount)
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -110,12 +105,12 @@ export default function REDvitto36() {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" })
 
     if (step === 4) {
-      setTransferButtonTimer(serverTransferTimer)
+      setTransferButtonTimer(transferButtonTimer)
       setBonusAccepted(false)
       setShowBonusModal(true)
       setTimeout(() => setIsBonusModalAnimating(true), 10)
     }
-  }, [step, serverTransferTimer])
+  }, [step, transferButtonTimer])
 
   useEffect(() => {
     if (step === 4 && bonusAccepted && transferButtonTimer > 0) {
@@ -724,7 +719,7 @@ export default function REDvitto36() {
                 <CardHeader className="space-y-3 pt-3 pb-0">
                   <CardTitle className="text-3xl text-primary font-semibold">Enviá tu carga</CardTitle>
                   <CardDescription className="text-muted-foreground text-base">
-                    Monto mínimo: ${minAmount}
+                    Monto mínimo: ${minAmountStr}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6 pb-8">

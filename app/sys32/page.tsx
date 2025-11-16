@@ -81,31 +81,31 @@ export default function AdminPage() {
 
   const loadConfig = async () => {
     try {
-      const response = await fetch("/api/sys32/config", {
+      const response = await fetch("/api/admin/settings", {
         credentials: "include",
         cache: "no-store",
       })
       
       if (response.ok) {
         const data = await response.json()
-        if (data.success && data.config) {
-          const config = data.config
+        if (data.success && data.settings) {
+          const settings = data.settings
           
-          setActiveAlias(config.alias)
-          setActivePhone(config.phone)
-          setActivePaymentType(config.paymentType)
-          setActiveUserCreationEnabled(config.userCreationEnabled)
-          setActiveTransferTimer(config.transferTimer)
-          setActiveMinAmount(config.minAmount)
+          setActiveAlias(settings.alias)
+          setActivePhone(settings.phone)
+          setActivePaymentType(settings.paymentType)
+          setActiveUserCreationEnabled(settings.createUserEnabled)
+          setActiveTransferTimer(settings.timerSeconds)
+          setActiveMinAmount(settings.minAmount)
 
-          setAlias(config.alias)
-          setPaymentType(config.paymentType)
-          setUserCreationEnabled(config.userCreationEnabled)
-          setTransferTimer(config.transferTimer)
-          setMinAmount(String(config.minAmount))
+          setAlias(settings.alias)
+          setPaymentType(settings.paymentType)
+          setUserCreationEnabled(settings.createUserEnabled)
+          setTransferTimer(settings.timerSeconds)
+          setMinAmount(String(settings.minAmount))
 
-          if (config.phone) {
-            const idx = SUPPORT_CONTACTS.findIndex((c) => c.phone === config.phone)
+          if (settings.phone) {
+            const idx = SUPPORT_CONTACTS.findIndex((c) => c.phone === settings.phone)
             if (idx >= 0) {
               setSelectedContactIndex(String(idx))
               setSupportPhone(SUPPORT_CONTACTS[idx].phone)
@@ -113,7 +113,7 @@ export default function AdminPage() {
               setActiveContactName(SUPPORT_CONTACTS[idx].name)
             } else {
               setSelectedContactIndex(String(SUPPORT_CONTACTS.length - 1))
-              setSupportPhone(config.phone)
+              setSupportPhone(settings.phone)
               setIsPhoneEditable(true)
               setActiveContactName("Otro / Personalizado")
             }
@@ -270,7 +270,7 @@ export default function AdminPage() {
     }
 
     try {
-      const response = await fetch("/api/sys32/config", {
+      const response = await fetch("/api/admin/settings", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -280,8 +280,8 @@ export default function AdminPage() {
           alias: alias.trim(),
           phone: phoneValue,
           paymentType: paymentType,
-          userCreationEnabled,
-          transferTimer,
+          createUserEnabled: userCreationEnabled,
+          timerSeconds: transferTimer,
           minAmount: minAmountNum,
           pin: adminPin,
         }),
@@ -306,7 +306,7 @@ export default function AdminPage() {
           setActiveContactName(SUPPORT_CONTACTS[idx].name)
         }
 
-        alert("✅ Configuración guardada exitosamente en la nube.\nLos cambios se reflejarán en todos los dispositivos en máximo 10 segundos.")
+        alert("✅ Configuración guardada exitosamente en Supabase.\nLos cambios son permanentes y se reflejan en todos los dispositivos.")
       }
     } catch (error) {
       console.error("Save error:", error)

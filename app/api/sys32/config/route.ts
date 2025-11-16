@@ -98,78 +98,24 @@ async function saveConfig(config: ServerConfig): Promise<void> {
 }
 
 export async function GET() {
-  try {
-    const config = await getConfig()
-    const supabase = getSupabaseClient()
-    
-    return NextResponse.json({
-      success: true,
-      config,
-      storage: supabase ? "supabase" : "memory"
-    })
-  } catch (error) {
-    console.error("[Config] GET error:", error)
-    return NextResponse.json({ error: "Error del servidor" }, { status: 500 })
-  }
+  // Redirect to new admin settings API
+  const url = new URL("/api/admin/settings", process.env.NEXT_PUBLIC_VERCEL_URL || "http://localhost:3000")
+  return NextResponse.redirect(url)
 }
 
 export async function POST(request: Request) {
-  try {
-    const adminPin = process.env.ADMIN_PIN
-    if (!adminPin) {
-      return NextResponse.json({ error: "Configuración del servidor incompleta" }, { status: 500 })
+  // Forward to new admin settings API
+  const body = await request.json()
+  
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_VERCEL_URL || "http://localhost:3000"}/api/admin/settings`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
     }
+  )
 
-    const body = await request.json()
-    const { alias, phone, paymentType, userCreationEnabled, transferTimer, minAmount, pin } = body
-
-    if (!pin || pin !== adminPin) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-    }
-
-    if (!alias || !phone || !paymentType) {
-      return NextResponse.json({ error: "Datos incompletos" }, { status: 400 })
-    }
-
-    if (paymentType !== "alias" && paymentType !== "cbu") {
-      return NextResponse.json({ error: "Tipo de pago inválido" }, { status: 400 })
-    }
-
-    if (typeof userCreationEnabled !== "boolean") {
-      return NextResponse.json({ error: "Estado de creación de usuarios inválido" }, { status: 400 })
-    }
-
-    if (typeof transferTimer !== "number" || transferTimer < 0 || transferTimer > 300) {
-      return NextResponse.json({ error: "Temporizador inválido (0-300 segundos)" }, { status: 400 })
-    }
-
-    if (typeof minAmount !== "number" || minAmount < 0) {
-      return NextResponse.json({ error: "Monto mínimo inválido" }, { status: 400 })
-    }
-
-    const newConfig: ServerConfig = {
-      alias,
-      phone,
-      paymentType,
-      userCreationEnabled,
-      transferTimer,
-      minAmount,
-      updatedAt: new Date().toISOString(),
-    }
-
-    await saveConfig(newConfig)
-    const supabase = getSupabaseClient()
-
-    return NextResponse.json({
-      success: true,
-      config: newConfig,
-      storage: supabase ? "supabase" : "memory"
-    })
-  } catch (error) {
-    console.error("[Config] POST error:", error)
-    return NextResponse.json({ 
-      error: "Error del servidor",
-      details: error instanceof Error ? error.message : "Error desconocido"
-    }, { status: 500 })
-  }
+  const data = await response.json()
+  return NextResponse.json(data, { status: response.status })
 }
