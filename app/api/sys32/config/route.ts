@@ -1,42 +1,74 @@
 import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
+import { put, head, list } from "@vercel/blob"
 
-let serverConfig = {
-  alias: "",
-  phone: "",
-  paymentType: "alias" as "alias" | "cbu",
+const BLOB_CONFIG_PATH = "system-config.json"
+
+interface ServerConfig {
+  alias: string
+  phone: string
+  paymentType: "alias" | "cbu"
+  userCreationEnabled: boolean
+  transferTimer: number
+  minAmount: number
+  updatedAt: string
+}
+
+const DEFAULT_CONFIG: ServerConfig = {
+  alias: process.env.NEXT_PUBLIC_DEFAULT_ALIAS || "DLHogar.mp",
+  phone: process.env.NEXT_PUBLIC_DEFAULT_PHONE || "543415481923",
+  paymentType: "alias",
   userCreationEnabled: true,
   transferTimer: 30,
   minAmount: 2000,
   updatedAt: new Date().toISOString(),
 }
 
+async function getConfigFromBlob(): Promise<ServerConfig> {
+  try {
+    // Check if config file exists in Blob storage
+    const { blobs } = await list({
+      prefix: BLOB_CONFIG_PATH,
+      limit: 1,
+    })
+
+    if (blobs.length === 0) {
+      // Config doesn't exist, create it with defaults
+      await saveConfigToBlob(DEFAULT_CONFIG)
+      return DEFAULT_CONFIG
+    }
+
+    // Fetch existing config
+    const response = await fetch(blobs[0].url)
+    const config: ServerConfig = await response.json()
+    return config
+  } catch (error) {
+    console.error("[Config] Error loading from Blob:", error)
+    return DEFAULT_CONFIG
+  }
+}
+
+async function saveConfigToBlob(config: ServerConfig): Promise<void> {
+  try {
+    await put(BLOB_CONFIG_PATH, JSON.stringify(config, null, 2), {
+      access: "public",
+      contentType: "application/json",
+    })
+  } catch (error) {
+    console.error("[Config] Error saving to Blob:", error)
+    throw error
+  }
+}
+
 export async function GET() {
   try {
-    const cookieStore = await cookies()
-    
-    const alias = cookieStore.get("cfg_alias")?.value || serverConfig.alias || process.env.NEXT_PUBLIC_DEFAULT_ALIAS || "DLHogar.mp"
-    const phone = cookieStore.get("cfg_phone")?.value || serverConfig.phone || process.env.NEXT_PUBLIC_DEFAULT_PHONE || "543415481923"
-    const paymentType = (cookieStore.get("cfg_payment_type")?.value as "alias" | "cbu") || serverConfig.paymentType || "alias"
-    const userCreationEnabled = cookieStore.get("cfg_user_creation_enabled")?.value === "false" ? false : (cookieStore.get("cfg_user_creation_enabled")?.value === "true" ? true : serverConfig.userCreationEnabled)
-    const transferTimer = Number(cookieStore.get("cfg_transfer_timer")?.value) || serverConfig.transferTimer || 30
-    const minAmount = Number(cookieStore.get("cfg_min_amount")?.value) || serverConfig.minAmount || 2000
-
-    const config = {
-      alias,
-      phone,
-      paymentType,
-      userCreationEnabled,
-      transferTimer,
-      minAmount,
-      updatedAt: serverConfig.updatedAt,
-    }
+    const config = await getConfigFromBlob()
 
     return NextResponse.json({
       success: true,
       config,
     })
   } catch (error) {
+    console.error("[Config] GET error:", error)
     return NextResponse.json({ error: "Error del servidor" }, { status: 500 })
   }
 }
@@ -75,7 +107,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Monto mínimo inválido" }, { status: 400 })
     }
 
-    serverConfig = {
+    const newConfig: ServerConfig = {
       alias,
       phone,
       paymentType,
@@ -85,61 +117,14 @@ export async function POST(request: Request) {
       updatedAt: new Date().toISOString(),
     }
 
-    const response = NextResponse.json({
+    await saveConfigToBlob(newConfig)
+
+    return NextResponse.json({
       success: true,
-      config: serverConfig,
+      config: newConfig,
     })
-
-    response.cookies.set("cfg_alias", alias, {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 365,
-      path: "/",
-    })
-
-    response.cookies.set("cfg_phone", phone, {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 365,
-      path: "/",
-    })
-
-    response.cookies.set("cfg_payment_type", paymentType, {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 365,
-      path: "/",
-    })
-
-    response.cookies.set("cfg_user_creation_enabled", String(userCreationEnabled), {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 365,
-      path: "/",
-    })
-
-    response.cookies.set("cfg_transfer_timer", String(transferTimer), {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 365,
-      path: "/",
-    })
-
-    response.cookies.set("cfg_min_amount", String(minAmount), {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 365,
-      path: "/",
-    })
-
-    return response
   } catch (error) {
+    console.error("[Config] POST error:", error)
     return NextResponse.json({ error: "Error del servidor" }, { status: 500 })
   }
 }

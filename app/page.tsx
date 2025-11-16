@@ -64,7 +64,7 @@ export default function REDvitto36() {
     }
     
     loadServerConfig()
-    const interval = setInterval(loadServerConfig, 5000) // Increased from 3s to 5s for better performance
+    const interval = setInterval(loadServerConfig, 10000) // Optimized from 5s to 10s
     
     return () => clearInterval(interval)
   }, [])
@@ -398,7 +398,7 @@ export default function REDvitto36() {
 
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
-                  <Clock className="w-6 h-6 text-[#FF8C00] shrink-0 mt-1" strokeWidth={2} />
+                  <Hourglass className="w-6 h-6 text-[#FF8C00] shrink-0 mt-1" strokeWidth={2} />
                   <div>
                     <h3 className="font-bold text-white mb-1">Sin cronograma de pagos</h3>
                     <p className="text-sm text-white/80 leading-relaxed">Los retiros se procesan de forma continua</p>
@@ -426,7 +426,7 @@ export default function REDvitto36() {
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <Headphones className="w-6 h-6 text-[#FF8C00] shrink-0 mt-1" strokeWidth={2} />
+                  <AlertCircle className="w-6 h-6 text-[#FF8C00] shrink-0 mt-1" strokeWidth={2} />
                   <div>
                     <h3 className="font-bold text-white mb-1">Soporte activo</h3>
                     <p className="text-sm text-white/80 leading-relaxed">

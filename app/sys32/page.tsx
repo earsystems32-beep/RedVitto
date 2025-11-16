@@ -79,40 +79,49 @@ export default function AdminPage() {
     }
   }
 
-  const loadConfig = () => {
-    const savedAlias = localStorage.getItem("cfg_alias") || ""
-    const savedPhone = localStorage.getItem("cfg_phone") || ""
-    const savedPaymentType = (localStorage.getItem("cfg_payment_type") as "alias" | "cbu") || "alias"
-    const savedUserCreation = localStorage.getItem("cfg_user_creation_enabled") === "true"
-    const savedTimer = Number(localStorage.getItem("cfg_transfer_timer")) || 30
-    const savedMinAmount = Number(localStorage.getItem("cfg_min_amount")) || 2000
+  const loadConfig = async () => {
+    try {
+      const response = await fetch("/api/sys32/config", {
+        credentials: "include",
+        cache: "no-store",
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.config) {
+          const config = data.config
+          
+          setActiveAlias(config.alias)
+          setActivePhone(config.phone)
+          setActivePaymentType(config.paymentType)
+          setActiveUserCreationEnabled(config.userCreationEnabled)
+          setActiveTransferTimer(config.transferTimer)
+          setActiveMinAmount(config.minAmount)
 
-    setActiveAlias(savedAlias)
-    setActivePhone(savedPhone)
-    setActivePaymentType(savedPaymentType)
-    setActiveUserCreationEnabled(savedUserCreation)
-    setActiveTransferTimer(savedTimer)
-    setActiveMinAmount(savedMinAmount)
+          setAlias(config.alias)
+          setPaymentType(config.paymentType)
+          setUserCreationEnabled(config.userCreationEnabled)
+          setTransferTimer(config.transferTimer)
+          setMinAmount(String(config.minAmount))
 
-    setAlias(savedAlias)
-    setPaymentType(savedPaymentType)
-    setUserCreationEnabled(savedUserCreation)
-    setTransferTimer(savedTimer)
-    setMinAmount(String(savedMinAmount))
-
-    if (savedPhone) {
-      const idx = SUPPORT_CONTACTS.findIndex((c) => c.phone === savedPhone)
-      if (idx >= 0) {
-        setSelectedContactIndex(String(idx))
-        setSupportPhone(SUPPORT_CONTACTS[idx].phone)
-        setIsPhoneEditable(SUPPORT_CONTACTS[idx].name === "Otro / Personalizado")
-        setActiveContactName(SUPPORT_CONTACTS[idx].name)
-      } else {
-        setSelectedContactIndex(String(SUPPORT_CONTACTS.length - 1))
-        setSupportPhone(savedPhone)
-        setIsPhoneEditable(true)
-        setActiveContactName("Otro / Personalizado")
+          if (config.phone) {
+            const idx = SUPPORT_CONTACTS.findIndex((c) => c.phone === config.phone)
+            if (idx >= 0) {
+              setSelectedContactIndex(String(idx))
+              setSupportPhone(SUPPORT_CONTACTS[idx].phone)
+              setIsPhoneEditable(SUPPORT_CONTACTS[idx].name === "Otro / Personalizado")
+              setActiveContactName(SUPPORT_CONTACTS[idx].name)
+            } else {
+              setSelectedContactIndex(String(SUPPORT_CONTACTS.length - 1))
+              setSupportPhone(config.phone)
+              setIsPhoneEditable(true)
+              setActiveContactName("Otro / Personalizado")
+            }
+          }
+        }
       }
+    } catch (error) {
+      console.error("Error loading config:", error)
     }
   }
 
@@ -285,13 +294,6 @@ export default function AdminPage() {
       const data = await response.json()
 
       if (data.success) {
-        localStorage.setItem("cfg_alias", alias.trim())
-        localStorage.setItem("cfg_phone", phoneValue)
-        localStorage.setItem("cfg_payment_type", paymentType)
-        localStorage.setItem("cfg_user_creation_enabled", String(userCreationEnabled))
-        localStorage.setItem("cfg_transfer_timer", String(transferTimer))
-        localStorage.setItem("cfg_min_amount", String(minAmountNum))
-
         setActiveAlias(alias.trim())
         setActivePhone(phoneValue)
         setActivePaymentType(paymentType)
@@ -304,11 +306,11 @@ export default function AdminPage() {
           setActiveContactName(SUPPORT_CONTACTS[idx].name)
         }
 
-        alert("Configuración guardada exitosamente en la nube. Se reflejará en todos los dispositivos.")
+        alert("✅ Configuración guardada exitosamente en la nube.\nLos cambios se reflejarán en todos los dispositivos en máximo 10 segundos.")
       }
     } catch (error) {
       console.error("Save error:", error)
-      alert("Error al guardar. Intentá de nuevo.")
+      alert("❌ Error al guardar. Verificá tu conexión e intentá de nuevo.")
     }
   }
 
