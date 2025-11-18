@@ -52,7 +52,7 @@ export default function AdminPage() {
   const [activeContactName, setActiveContactName] = useState("")
   const [activePaymentType, setActivePaymentType] = useState<"alias" | "cbu">("alias")
   const [userCreationEnabled, setUserCreationEnabled] = useState(true)
-  const [transferTimer, setTransferTimer] = useState(30)
+  const [transferTimer, setTransferTimer] = useState("30")
   const [minAmount, setMinAmount] = useState("2000")
   const [activeUserCreationEnabled, setActiveUserCreationEnabled] = useState(true)
   const [activeTransferTimer, setActiveTransferTimer] = useState(30)
@@ -85,7 +85,7 @@ export default function AdminPage() {
           setAlias(settings.alias || "")
           setPaymentType(settings.paymentType || "alias")
           setUserCreationEnabled(settings.createUserEnabled ?? true)
-          setTransferTimer(settings.timerSeconds ?? 30)
+          setTransferTimer(String(settings.timerSeconds ?? 30))
           setMinAmount(String(settings.minAmount ?? 2000))
 
           if (settings.phone) {
@@ -240,7 +240,8 @@ export default function AdminPage() {
       }
     }
 
-    if (transferTimer < 0 || transferTimer > 300) {
+    const transferTimerNum = Number(transferTimer)
+    if (isNaN(transferTimerNum) || transferTimerNum < 0 || transferTimerNum > 300) {
       alert("El temporizador debe estar entre 0 y 300 segundos")
       return
     }
@@ -263,7 +264,7 @@ export default function AdminPage() {
           phone: phoneValue,
           paymentType: paymentType,
           createUserEnabled: userCreationEnabled,
-          timerSeconds: transferTimer,
+          timerSeconds: transferTimerNum,
           minAmount: minAmountNum,
           pin: adminPin,
         }),
@@ -280,7 +281,7 @@ export default function AdminPage() {
         setActivePhone(phoneValue)
         setActivePaymentType(paymentType)
         setActiveUserCreationEnabled(userCreationEnabled)
-        setActiveTransferTimer(transferTimer)
+        setActiveTransferTimer(transferTimerNum)
         setActiveMinAmount(minAmountNum)
         
         const idx = Number(selectedContactIndex)
@@ -395,12 +396,15 @@ export default function AdminPage() {
                       </Label>
                       <Input
                         id="transfer-timer"
-                        type="number"
-                        min="0"
-                        max="300"
+                        type="text"
+                        inputMode="numeric"
                         value={transferTimer}
-                        onChange={(e) => setTransferTimer(Number(e.target.value))}
-                        className="h-12 text-base bg-purple-950/50 border-purple-500/30 focus:border-amber-400 focus:ring-amber-400/50 transition-all duration-200 text-white"
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, "")
+                          setTransferTimer(value)
+                        }}
+                        placeholder="30"
+                        className="h-12 text-base bg-purple-950/50 border-purple-500/30 focus:border-amber-400 focus:ring-amber-400/50 transition-all duration-200 text-white placeholder:text-purple-300/50"
                       />
                       <p className="text-xs text-purple-300/70">
                         Tiempo de espera en la sección "Esperando transferencia" (0-300 segundos)
