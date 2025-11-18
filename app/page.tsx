@@ -41,6 +41,7 @@ export default function REDvitto36() {
   const [paymentType, setPaymentType] = useState<"alias" | "cbu">("alias")
   const [originalTimerSeconds, setOriginalTimerSeconds] = useState(30)
 
+
   // Separated config loading to only set timer when not in use
   useEffect(() => {
     const loadServerConfig = async () => {
@@ -119,15 +120,8 @@ export default function REDvitto36() {
         setTransferButtonTimer(originalTimerSeconds)
         setTimerHasStarted(true)
         
-        if (typeof window !== "undefined") {
-          const bonusSeen = localStorage.getItem('bonus20_seen')
-          if (!bonusSeen) {
-            setShowBonusModal(true)
-            setTimeout(() => setIsBonusModalAnimating(true), 10)
-          } else {
-            setBonusAccepted(true)
-          }
-        }
+        setShowBonusModal(true)
+        setTimeout(() => setIsBonusModalAnimating(true), 10)
       }
     }
     
@@ -348,11 +342,6 @@ export default function REDvitto36() {
     setTimeout(() => {
       setShowBonusModal(false)
       setBonusAccepted(true)
-      
-      // Save to localStorage that user has seen the bonus modal
-      if (typeof window !== "undefined") {
-        localStorage.setItem('bonus20_seen', 'true')
-      }
     }, 300)
   }, [])
 
@@ -362,13 +351,6 @@ export default function REDvitto36() {
       const urlParams = new URLSearchParams(window.location.search)
       if (urlParams.get('resetBonus') === '1') {
         localStorage.removeItem('bonus20_seen')
-      }
-      
-      // Check if user has already seen the bonus modal
-      const bonusSeen = localStorage.getItem('bonus20_seen')
-      if (!bonusSeen) {
-        // User hasn't seen it, will show on step 4
-        // Do nothing here, let step 4 logic handle it
       }
     }
   }, [])
@@ -392,7 +374,7 @@ export default function REDvitto36() {
 
               <div className="space-y-4 text-center">
                 <div className="bg-gradient-to-br from-[#FF8C00]/20 to-[#FFB800]/10 border-2 border-[#FF8C00]/30 rounded-xl p-6 px-6 py-3">
-                  <p className="text-3xl font-bold text-[#FF8C00] mb-2">20% Adicional</p>
+                  <p className="text-3xl font-bold text-[#FF8C00] mb-2">25% Adicional</p>
                   <p className="text-lg text-white font-semibold">¡En tu primera carga!</p>
                 </div>
 
@@ -481,7 +463,7 @@ export default function REDvitto36() {
               </div>
 
               <p className="text-xs text-white/60 italic leading-relaxed">
-                Recordá que los tiempos pueden variar levemente según el método de pago utilizado.
+                {""}
               </p>
 
               <button
@@ -556,6 +538,13 @@ export default function REDvitto36() {
                       className="max-w-[320px] min-w-[240px] h-12 text-base border-border hover:bg-muted hover:border-primary/50 transition-all duration-200 font-normal text-muted-foreground bg-transparent"
                     >
                       Información y cronograma
+                    </Button>
+                    <Button
+                      onClick={() => changeStep(7)} // Changed to navigate to step 7 instead of scrolling
+                      variant="outline"
+                      className="max-w-[320px] min-w-[240px] h-12 text-base border-border hover:bg-muted hover:border-primary/50 transition-all duration-200 font-normal text-muted-foreground bg-transparent"
+                    >
+                      Soporte
                     </Button>
                   </div>
                 </CardContent>
@@ -981,6 +970,52 @@ export default function REDvitto36() {
                 <ArrowLeft className="w-5 h-5 shrink-0" />
                 <span className="truncate">Volver</span>
               </button>
+            </div>
+          </div>
+        )}
+
+        {step === 7 && (
+          <div
+            className={`transition-all duration-[350ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+              isStepAnimating
+                ? "opacity-100 translate-y-0 scale-100 blur-0 rotate-0"
+                : "opacity-0 translate-y-8 scale-90 blur-sm -rotate-1"
+            }`}
+          >
+            <div className="py-12 px-3">
+              <Card className="shadow-md backdrop-blur-md bg-card/90 border-transparent p-3 px-0">
+                <CardHeader className="space-y-3 pt-3 pb-0">
+                  <div className="flex justify-center mb-2">
+                    <MessageCircle className="w-10 h-10 text-primary" strokeWidth={2} />
+                  </div>
+                  <CardTitle className="text-3xl text-primary font-semibold text-center">Bienvenido a soporte</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6 pt-4 pb-8">
+                  <p className="text-center text-muted-foreground text-base leading-relaxed max-w-md mx-auto">
+                    Podés comunicarte con nuestro número de atención para reclamos y consultas. Te ayudamos a resolver cualquier inconveniente con tus fichas, accesos o promociones.
+                  </p>
+                  
+                  <div className="flex flex-col items-center gap-3 pt-2">
+                    <a
+                      href="https://wa.me/543416605903?text=Hola,%20me%20contacto%20desde%20la%20página%20REDvitto36%20por%20un%20reclamo%20o%20consulta%20de%20soporte.%20¿Me%20podrías%20ayudar?"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-liquid-glass max-w-[320px] min-w-[240px] w-full h-12 px-5 font-semibold text-base rounded-lg transition-all duration-200 leading-tight truncate text-black flex items-center justify-center gap-2"
+                    >
+                      Contactar con soporte
+                    </a>
+                    
+                    <Button
+                      onClick={() => changeStep(1)}
+                      variant="outline"
+                      className="max-w-[320px] min-w-[240px] w-full h-12 text-base border-border hover:bg-muted hover:border-primary/50 transition-all duration-200 font-normal text-muted-foreground bg-transparent"
+                    >
+                      <ArrowLeft className="w-4 h-4 mr-2" />
+                      Volver al inicio
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         )}
