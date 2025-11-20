@@ -374,7 +374,7 @@ export default function REDvitto36() {
 
               <div className="space-y-4 text-center">
                 <div className="bg-gradient-to-br from-[#FF8C00]/20 to-[#FFB800]/10 border-2 border-[#FF8C00]/30 rounded-xl p-6 px-6 py-3">
-                  <p className="text-3xl font-bold text-[#FF8C00] mb-2">25% Adicional</p>
+                  <p className="text-3xl font-bold text-[#FF8C00] mb-2">20% Adicional</p>
                   <p className="text-lg text-white font-semibold">¡En tu primera carga!</p>
                 </div>
 
