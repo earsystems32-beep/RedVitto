@@ -8,7 +8,22 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { Check, Copy, Crown, MessageCircle, CheckCircle, ArrowLeft, AlertCircle, DollarSign, X, Hourglass, Gift, Shield, Users, AlertTriangle } from 'lucide-react'
+import {
+  Check,
+  Copy,
+  Crown,
+  MessageCircle,
+  CheckCircle,
+  ArrowLeft,
+  AlertCircle,
+  DollarSign,
+  X,
+  Hourglass,
+  Gift,
+  Shield,
+  Users,
+  AlertTriangle,
+} from "lucide-react"
 
 export default function REDvitto36() {
   const [step, setStep] = useState(1)
@@ -41,7 +56,6 @@ export default function REDvitto36() {
   const [paymentType, setPaymentType] = useState<"alias" | "cbu">("alias")
   const [originalTimerSeconds, setOriginalTimerSeconds] = useState(30)
 
-
   // Separated config loading to only set timer when not in use
   useEffect(() => {
     const loadServerConfig = async () => {
@@ -59,12 +73,12 @@ export default function REDvitto36() {
             setUserCreationEnabled(data.settings.createUserEnabled ?? true)
             const timerValue = data.settings.timerSeconds ?? 30
             setOriginalTimerSeconds(timerValue)
-            
+
             // Only update transferButtonTimer if timer hasn't started yet
             if (!timerHasStarted) {
               setTransferButtonTimer(timerValue)
             }
-            
+
             setMinAmount(data.settings.minAmount ?? 2000)
           }
         }
@@ -72,10 +86,10 @@ export default function REDvitto36() {
         // Silent fail - use defaults
       }
     }
-    
+
     loadServerConfig()
     const interval = setInterval(loadServerConfig, 10000)
-    
+
     return () => clearInterval(interval)
   }, [timerHasStarted])
 
@@ -119,12 +133,12 @@ export default function REDvitto36() {
       if (!timerHasStarted) {
         setTransferButtonTimer(originalTimerSeconds)
         setTimerHasStarted(true)
-        
+
         setShowBonusModal(true)
         setTimeout(() => setIsBonusModalAnimating(true), 10)
       }
     }
-    
+
     // Reset timer state when leaving step 4
     if (step !== 4 && timerHasStarted) {
       setTimerHasStarted(false)
@@ -301,7 +315,11 @@ export default function REDvitto36() {
     const montoFormateado = formatMontoArgentino(monto)
     const platform = localStorage.getItem("eds_platform") || ""
     const platformName =
-      platform === "g" ? "https://ganamosvip.xyz" : platform === "z" ? "https://casinozeus.cv/" : "No especificada"
+      platform === "g"
+        ? "https://ganamosvip.xyz"
+        : platform === "z"
+          ? "https://1casinozeus.xyz/" // Updated URL from https://casinozeus.cv/ to https://1casinozeus.xyz/
+          : "No especificada"
 
     const msg = `Hola, ya envié mi carga.\n\nUsuario: ${username}\nContraseña: ${password}\nQuiero jugar en: \n${platformName}\n\nTitular: ${titular}\nMonto: $${montoFormateado}\nHora de transferencia: ${time}\nAdjunto comprobante.`
     const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(msg)}`
@@ -349,8 +367,8 @@ export default function REDvitto36() {
     if (typeof window !== "undefined") {
       // Check for reset query parameter (for testing)
       const urlParams = new URLSearchParams(window.location.search)
-      if (urlParams.get('resetBonus') === '1') {
-        localStorage.removeItem('bonus20_seen')
+      if (urlParams.get("resetBonus") === "1") {
+        localStorage.removeItem("bonus20_seen")
       }
     }
   }, [])
@@ -374,7 +392,7 @@ export default function REDvitto36() {
 
               <div className="space-y-4 text-center">
                 <div className="bg-gradient-to-br from-[#FF8C00]/20 to-[#FFB800]/10 border-2 border-[#FF8C00]/30 rounded-xl p-6 px-6 py-3">
-                  <p className="text-3xl font-bold text-[#FF8C00] mb-2">20% Adicional</p>
+                  <p className="text-3xl font-bold text-[#FF8C00] mb-2">25% Adicional</p>
                   <p className="text-lg text-white font-semibold">¡En tu primera carga!</p>
                 </div>
 
@@ -462,9 +480,7 @@ export default function REDvitto36() {
                 </div>
               </div>
 
-              <p className="text-xs text-white/60 italic leading-relaxed">
-                {""}
-              </p>
+              <p className="text-xs text-white/60 italic leading-relaxed">{""}</p>
 
               <button
                 onClick={closeInfoModal}
@@ -524,7 +540,7 @@ export default function REDvitto36() {
                   </p>
                   <div className="flex flex-col items-center gap-3 pt-4">
                     <button
-                      onClick={() => userCreationEnabled ? changeStep(2) : null}
+                      onClick={() => (userCreationEnabled ? changeStep(2) : null)}
                       disabled={!userCreationEnabled}
                       className={`btn-liquid-glass max-w-[320px] min-w-[240px] h-12 px-5 text-base rounded-lg transition-all duration-200 leading-tight truncate text-black font-bold ${
                         !userCreationEnabled ? "opacity-50 cursor-not-allowed" : ""
@@ -988,13 +1004,16 @@ export default function REDvitto36() {
                   <div className="flex justify-center mb-2">
                     <MessageCircle className="w-10 h-10 text-primary" strokeWidth={2} />
                   </div>
-                  <CardTitle className="text-3xl text-primary font-semibold text-center">Bienvenido a soporte</CardTitle>
+                  <CardTitle className="text-3xl text-primary font-semibold text-center">
+                    Bienvenido a soporte
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-4 pb-8">
                   <p className="text-center text-muted-foreground text-base leading-relaxed max-w-md mx-auto">
-                    Podés comunicarte con nuestro número de atención para reclamos y consultas. Te ayudamos a resolver cualquier inconveniente con tus fichas, accesos o promociones.
+                    Podés comunicarte con nuestro número de atención para reclamos y consultas. Te ayudamos a resolver
+                    cualquier inconveniente con tus fichas, accesos o promociones.
                   </p>
-                  
+
                   <div className="flex flex-col items-center gap-3 pt-2">
                     <a
                       href="https://wa.me/543416605903?text=Hola,%20me%20contacto%20desde%20la%20página%20REDvitto36%20por%20un%20reclamo%20o%20consulta%20de%20soporte.%20¿Me%20podrías%20ayudar?"
@@ -1004,7 +1023,7 @@ export default function REDvitto36() {
                     >
                       Contactar con soporte
                     </a>
-                    
+
                     <Button
                       onClick={() => changeStep(1)}
                       variant="outline"
