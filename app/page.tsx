@@ -315,11 +315,7 @@ export default function REDvitto36() {
     const montoFormateado = formatMontoArgentino(monto)
     const platform = localStorage.getItem("eds_platform") || ""
     const platformName =
-      platform === "g"
-        ? "https://ganamosvip.xyz"
-        : platform === "z"
-          ? "https://1casinozeus.xyz/" // Updated URL from https://casinozeus.cv/ to https://1casinozeus.xyz/
-          : "No especificada"
+      platform === "g" ? "https://ganamos.sbs" : platform === "z" ? "https://casinozeus.fit" : "No especificada"
 
     const msg = `Hola, ya envié mi carga.\n\nUsuario: ${username}\nContraseña: ${password}\nQuiero jugar en: \n${platformName}\n\nTitular: ${titular}\nMonto: $${montoFormateado}\nHora de transferencia: ${time}\nAdjunto comprobante.`
     const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(msg)}`
@@ -533,7 +529,7 @@ export default function REDvitto36() {
                       textShadow: "0 2px 8px rgba(217, 119, 6, 0.4)",
                     }}
                   >
-                    Nombre del casino 
+                    REDvitto36
                   </h1>
                   <p className="text-lg md:text-xl text-muted-foreground font-normal text-center">
                     Creá tu usuario y empezá a jugar!
