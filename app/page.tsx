@@ -317,7 +317,7 @@ export default function REDvitto36() {
     const platformName =
       platform === "g" ? "https://ganamos.sbs" : platform === "z" ? "https://casinozeus.fit" : "No especificada"
 
-    const msg = `Hola, ya envié mi carga.\n\nUsuario: ${username}\nContraseña: ${password}\nQuiero jugar en: \n${platformName}\n\nTitular: ${titular}\nMonto: $${montoFormateado}\nHora de transferencia: ${time}\nAdjunto comprobante.`
+    const msg = `Hola, ya envié mi c4rga.\n\nUsu4rio: ${username}\nContr4seña: ${password}\nQuiero jug4r en: \n${platformName}\n\nTitular: ${titular}\nMonto: $${montoFormateado}\nHora de transferencia: ${time}\nAdjunto comprobante.`
     const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(msg)}`
     window.open(url, "_blank")
   }, [titular, monto, formatMontoArgentino, password, phoneNumber])
