@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import { LinkIcon } from "lucide-react"
 import {
   Lock,
   LogOut,
@@ -762,6 +763,34 @@ export default function AdminPage() {
                         placeholder="Número de teléfono"
                         className="h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white placeholder:text-gray-500 rounded-xl"
                       />
+                    </div>
+                  </div>
+
+                  {/* URL de Plataforma */}
+                  <div className="space-y-3 p-4 rounded-xl border border-purple-600/20 bg-purple-950/10">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                      <LinkIcon className="w-5 h-5 text-purple-400" strokeWidth={2.5} />
+                      URL de Plataforma
+                    </h3>
+                    <p className="text-sm text-gray-400">
+                      Este link se incluye en los mensajes de WhatsApp que envían los usuarios
+                    </p>
+
+                    <div className="space-y-3">
+                      <Label htmlFor="cfg-platform-url" className="text-base text-white font-medium">
+                        Link de la plataforma Ganamos
+                      </Label>
+                      <Input
+                        id="cfg-platform-url"
+                        type="url"
+                        value={platformUrl}
+                        onChange={(e) => setPlatformUrl(e.target.value)}
+                        placeholder="https://ganamos.sbs"
+                        className="h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white placeholder:text-gray-500 rounded-xl"
+                      />
+                      <p className="text-xs text-gray-500">
+                        Ejemplo: https://ganamos.sbs o https://nuevaplataforma.com
+                      </p>
                     </div>
                   </div>
 
