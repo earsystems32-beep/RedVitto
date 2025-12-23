@@ -7,10 +7,7 @@ export async function GET() {
     return NextResponse.json({ success: true, settings })
   } catch (error) {
     console.error("[Admin Settings API] GET error:", error)
-    return NextResponse.json(
-      { error: "Error al obtener la configuración" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Error al obtener la configuración" }, { status: 500 })
   }
 }
 
@@ -18,14 +15,23 @@ export async function POST(request: Request) {
   try {
     const adminPin = process.env.ADMIN_PIN
     if (!adminPin) {
-      return NextResponse.json(
-        { error: "Configuración del servidor incompleta" },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: "Configuración del servidor incompleta" }, { status: 500 })
     }
 
     const body = await request.json()
-    const { pin, minAmount, timerSeconds, createUserEnabled, alias, phone, paymentType } = body
+    const {
+      pin,
+      minAmount,
+      timerSeconds,
+      createUserEnabled,
+      alias,
+      phone,
+      support_phone,
+      paymentType,
+      platformUrl,
+      bonusEnabled,
+      bonusPercentage,
+    } = body
 
     if (!pin || pin !== adminPin) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
@@ -35,20 +41,14 @@ export async function POST(request: Request) {
 
     if (minAmount !== undefined) {
       if (typeof minAmount !== "number" || minAmount < 0) {
-        return NextResponse.json(
-          { error: "El monto mínimo debe ser un número mayor o igual a 0" },
-          { status: 400 }
-        )
+        return NextResponse.json({ error: "El monto mínimo debe ser un número mayor o igual a 0" }, { status: 400 })
       }
       updates.minAmount = minAmount
     }
 
     if (timerSeconds !== undefined) {
       if (typeof timerSeconds !== "number" || timerSeconds < 0 || timerSeconds > 300) {
-        return NextResponse.json(
-          { error: "El temporizador debe estar entre 0 y 300 segundos" },
-          { status: 400 }
-        )
+        return NextResponse.json({ error: "El temporizador debe estar entre 0 y 300 segundos" }, { status: 400 })
       }
       updates.timerSeconds = timerSeconds
     }
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
       if (typeof createUserEnabled !== "boolean") {
         return NextResponse.json(
           { error: "El estado de creación de usuarios debe ser verdadero o falso" },
-          { status: 400 }
+          { status: 400 },
         )
       }
       updates.createUserEnabled = createUserEnabled
@@ -65,32 +65,54 @@ export async function POST(request: Request) {
 
     if (alias !== undefined) {
       if (typeof alias !== "string" || alias.trim().length === 0) {
-        return NextResponse.json(
-          { error: "El alias no puede estar vacío" },
-          { status: 400 }
-        )
+        return NextResponse.json({ error: "El alias no puede estar vacío" }, { status: 400 })
       }
       updates.alias = alias.trim()
     }
 
     if (phone !== undefined) {
       if (typeof phone !== "string" || phone.trim().length < 8) {
-        return NextResponse.json(
-          { error: "El teléfono debe tener al menos 8 dígitos" },
-          { status: 400 }
-        )
+        return NextResponse.json({ error: "El teléfono debe tener al menos 8 dígitos" }, { status: 400 })
       }
       updates.phone = phone.trim()
     }
 
+    if (support_phone !== undefined) {
+      if (typeof support_phone !== "string" || support_phone.trim().length < 8) {
+        return NextResponse.json({ error: "El teléfono de soporte debe tener al menos 8 dígitos" }, { status: 400 })
+      }
+      updates.supportPhone = support_phone.trim()
+    }
+
     if (paymentType !== undefined) {
       if (paymentType !== "alias" && paymentType !== "cbu") {
-        return NextResponse.json(
-          { error: "El tipo de pago debe ser 'alias' o 'cbu'" },
-          { status: 400 }
-        )
+        return NextResponse.json({ error: "El tipo de pago debe ser 'alias' o 'cbu'" }, { status: 400 })
       }
       updates.paymentType = paymentType
+    }
+
+    if (platformUrl !== undefined) {
+      if (typeof platformUrl !== "string" || platformUrl.trim().length === 0) {
+        return NextResponse.json({ error: "La URL de la plataforma no puede estar vacía" }, { status: 400 })
+      }
+      if (!platformUrl.startsWith("http://") && !platformUrl.startsWith("https://")) {
+        return NextResponse.json({ error: "La URL debe comenzar con http:// o https://" }, { status: 400 })
+      }
+      updates.platformUrl = platformUrl.trim()
+    }
+
+    if (bonusEnabled !== undefined) {
+      if (typeof bonusEnabled !== "boolean") {
+        return NextResponse.json({ error: "El estado del bono debe ser verdadero o falso" }, { status: 400 })
+      }
+      updates.bonusEnabled = bonusEnabled
+    }
+
+    if (bonusPercentage !== undefined) {
+      if (typeof bonusPercentage !== "number" || bonusPercentage < 0 || bonusPercentage > 100) {
+        return NextResponse.json({ error: "El porcentaje del bono debe estar entre 0 y 100" }, { status: 400 })
+      }
+      updates.bonusPercentage = bonusPercentage
     }
 
     const updatedSettings = await updateSettings(updates)
@@ -107,7 +129,7 @@ export async function POST(request: Request) {
         error: "Error al guardar la configuración",
         details: error instanceof Error ? error.message : "Error desconocido",
       },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }
