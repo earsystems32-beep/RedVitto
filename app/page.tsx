@@ -3,7 +3,6 @@ import type React from "react"
 import { useState, useEffect, useCallback } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import {
   Check,
   Copy,
@@ -19,6 +18,7 @@ import {
   Wallet,
   Clock,
   TrendingUp,
+  Home,
 } from "lucide-react"
 
 export default function TheCrown() {
@@ -61,6 +61,12 @@ export default function TheCrown() {
   const [copied, setCopied] = useState(false) // Renamed from copiedAlias for clarity
   const [platformUrl, setPlatformUrl] = useState("https://ganamos.sbs")
 
+  const [bonusEnabled, setBonusEnabled] = useState(true)
+  const [bonusPercentage, setBonusPercentage] = useState(25)
+
+  // Assume settings is available after fetching
+  const [settings, setSettings] = useState<any>(null) // Added state for settings
+
   // Separated config loading to only set timer when not in use
   useEffect(() => {
     const loadServerConfig = async () => {
@@ -72,6 +78,7 @@ export default function TheCrown() {
         if (response.ok) {
           const data = await response.json()
           if (data.success && data.settings) {
+            setSettings(data.settings) // Store settings
             setAlias(data.settings.alias)
             setPhoneNumber(data.settings.phone)
             setPaymentType(data.settings.paymentType)
@@ -87,6 +94,8 @@ export default function TheCrown() {
             setMinAmount(data.settings.minAmount ?? 2000)
             setPaymentData(data.settings.paymentData || "") // Cargar alias/cbu
             setPlatformUrl(data.settings.platformUrl || "https://ganamos.sbs")
+            setBonusEnabled(data.settings.bonusEnabled ?? true)
+            setBonusPercentage(data.settings.bonusPercentage ?? 25)
           }
         }
       } catch (error) {
@@ -142,8 +151,13 @@ export default function TheCrown() {
         setTransferButtonTimer(originalTimerSeconds)
         setTimerHasStarted(true)
 
-        setShowBonusModal(true)
-        setTimeout(() => setIsBonusModalAnimating(true), 10)
+        if (bonusEnabled) {
+          setShowBonusModal(true)
+          setTimeout(() => setIsBonusModalAnimating(true), 10)
+        } else {
+          // Si el bono está deshabilitado, aceptar automáticamente
+          setBonusAccepted(true)
+        }
       }
     }
 
@@ -152,7 +166,7 @@ export default function TheCrown() {
       setTimerHasStarted(false)
       setBonusAccepted(false)
     }
-  }, [step, originalTimerSeconds, timerHasStarted])
+  }, [step, originalTimerSeconds, timerHasStarted, bonusEnabled])
 
   // Countdown timer runs only when conditions are met
   useEffect(() => {
@@ -378,7 +392,7 @@ Adjunto comprobante.`
     // Lógica para enviar mensaje de WhatsApp con los datos del paso 5
     // Esta función se llama desde el botón de "Acreditar mi carga" en el paso 5
     handleWhatsApp() // Reutilizamos la lógica de handleWhatsApp
-    setStep(7) // Directly set step instead of calling changeStep
+    setStep(6) // Cambiar a paso 6 que ahora será confirmación
   }, [handleWhatsApp])
 
   // This function seems redundant with handleWhatsAppSend now, but kept for potential future use
@@ -483,7 +497,7 @@ Adjunto comprobante.`
 
                 <div className="space-y-4 text-center">
                   <div className="bg-purple-950/50 border border-purple-600/30 rounded-xl p-6">
-                    <p className="text-5xl font-bold text-purple-400 mb-2">25%</p>
+                    <p className="text-5xl font-bold text-purple-400 mb-2">{bonusPercentage}%</p>
                     <p className="text-lg text-white font-medium">Adicional en tu primera carga</p>
                   </div>
 
@@ -578,7 +592,6 @@ Adjunto comprobante.`
               <div className="space-y-4">
                 <Crown className="w-20 h-20 text-purple-500 mx-auto mb-6" strokeWidth={1.5} />
                 <h1 className="text-6xl font-bold tracking-tight text-white">TheCrown</h1>
-                <p className="text-lg text-gray-400 font-normal">Plataforma Premium de Pagos</p>
               </div>
 
               <div className="space-y-5">
@@ -932,7 +945,7 @@ Adjunto comprobante.`
           </div>
         )}
 
-        {/* PASO 6 - Preguntas Frecuentes SIN CARD */}
+        {/* PASO 6 - Confirmación Final */}
         {step === 6 && (
           <div
             className={`transition-all duration-500 ease-out ${
@@ -943,72 +956,58 @@ Adjunto comprobante.`
             }}
           >
             <div className="space-y-10">
-              <div className="space-y-3 text-center">
-                <h2 className="text-4xl font-bold text-white">Preguntas Frecuentes</h2>
+              <div className="space-y-6 text-center">
+                <div className="flex justify-center">
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-600 to-purple-800 flex items-center justify-center animate-bounce-slow">
+                    <Check className="w-10 h-10 text-white" strokeWidth={3} />
+                  </div>
+                </div>
+                <h2 className="text-4xl font-bold text-white neon-text">¡Carga Enviada!</h2>
+                <p className="text-center text-gray-400 text-base leading-relaxed max-w-md mx-auto">
+                  Tu comprobante fue enviado correctamente. Recibirás tu acreditación en los próximos minutos.
+                </p>
               </div>
 
-              <Accordion type="single" collapsible className="w-full space-y-3">
-                <AccordionItem
-                  value="item-1"
-                  className="border-0 bg-gray-900 rounded-xl px-5 py-1 border border-gray-800"
-                >
-                  <AccordionTrigger className="text-left text-white hover:text-purple-500 transition-colors font-medium text-base">
-                    ¿Cuánto tarda en acreditarse mi carga?
-                  </AccordionTrigger>
-                  <AccordionContent className="text-gray-400 leading-relaxed text-sm pt-2">
-                    Las cargas se acreditan en un plazo de 5 a 30 minutos.
-                  </AccordionContent>
-                </AccordionItem>
+              <div className="bg-gray-900/50 border border-purple-600/30 rounded-xl p-6 space-y-3">
+                <div className="flex items-start gap-3">
+                  <Clock className="w-5 h-5 text-purple-500 mt-0.5 flex-shrink-0" strokeWidth={2} />
+                  <div>
+                    <p className="text-white font-medium text-base">Tiempo de acreditación</p>
+                    <p className="text-gray-400 text-sm">Entre 5 y 30 minutos</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <MessageCircle className="w-5 h-5 text-purple-500 mt-0.5 flex-shrink-0" strokeWidth={2} />
+                  <div>
+                    <p className="text-white font-medium text-base">¿Problemas?</p>
+                    <p className="text-gray-400 text-sm">Contactá a soporte desde el menú principal</p>
+                  </div>
+                </div>
+              </div>
 
-                <AccordionItem
-                  value="item-2"
-                  className="border-0 bg-gray-900 rounded-xl px-5 py-1 border border-gray-800"
+              <div className="space-y-4">
+                <button
+                  onClick={() => {
+                    // Resetear estados y volver al inicio
+                    setApodo("")
+                    setDigitos("")
+                    setUsuario("")
+                    setUsername("")
+                    setTitular("")
+                    setMonto("")
+                    changeStep(1, "forward")
+                  }}
+                  className="w-full h-14 btn-gradient-animated text-white font-semibold text-base rounded-xl transition-all flex items-center justify-center gap-3 hover:scale-105 hover:shadow-[0_0_40px_rgba(167,139,250,0.6)]"
                 >
-                  <AccordionTrigger className="text-left text-white hover:text-purple-500 transition-colors font-medium text-base">
-                    ¿Puedo cargar desde otra cuenta?
-                  </AccordionTrigger>
-                  <AccordionContent className="text-gray-400 leading-relaxed text-sm pt-2">
-                    Sí, podés cargar desde cualquier cuenta.
-                  </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem
-                  value="item-3"
-                  className="border-0 bg-gray-900 rounded-xl px-5 py-1 border border-gray-800"
-                >
-                  <AccordionTrigger className="text-left text-white hover:text-purple-500 transition-colors font-medium text-base">
-                    ¿Qué hago si me equivoqué de monto?
-                  </AccordionTrigger>
-                  <AccordionContent className="text-gray-400 leading-relaxed text-sm pt-2">
-                    Contactá inmediatamente al soporte por WhatsApp.
-                  </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem
-                  value="item-4"
-                  className="border-0 bg-gray-900 rounded-xl px-5 py-1 border border-gray-800"
-                >
-                  <AccordionTrigger className="text-left text-white hover:text-purple-500 transition-colors font-medium text-base">
-                    ¿Qué horario tiene el soporte?
-                  </AccordionTrigger>
-                  <AccordionContent className="text-gray-400 leading-relaxed text-sm pt-2">
-                    El soporte está disponible de 9:00 a 23:00 hs.
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-
-              <button
-                onClick={() => changeStep(5, "back")}
-                className="w-full h-14 bg-purple-600 hover:bg-purple-700 text-white font-semibold text-base rounded-xl transition-all flex items-center justify-center gap-3 hover:scale-105 hover:shadow-[0_0_30px_rgba(167,139,250,0.5)]"
-              >
-                <ArrowLeft className="w-5 h-5" strokeWidth={2} />
-                <span>Volver</span>
-              </button>
+                  <Home className="w-5 h-5" strokeWidth={2} />
+                  <span>Volver al Inicio</span>
+                </button>
+              </div>
             </div>
           </div>
         )}
 
-        {/* PASO 7 - Soporte SIN CARD */}
+        {/* PASO 7 - Soporte (accesible desde el menú principal) */}
         {step === 7 && (
           <div
             className={`transition-all duration-500 ease-out ${
@@ -1034,13 +1033,13 @@ Adjunto comprobante.`
 
               <div className="space-y-4">
                 <a
-                  href="https://wa.me/543416605903?text=Hola,%20me%20contacto%20desde%20TheCrown."
+                  href={`https://wa.me/${settings?.support_phone || "543416605903"}?text=Hola,%20me%20contacto%20desde%20TheCrown.`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full h-14 bg-purple-600 hover:bg-purple-700 text-white font-semibold text-base rounded-xl transition-all flex items-center justify-center gap-3 hover:scale-105 hover:shadow-[0_0_30px_rgba(167,139,250,0.5)]"
+                  className="w-full h-14 btn-gradient-animated text-white font-semibold text-base rounded-xl transition-all flex items-center justify-center gap-3 hover:scale-105 hover:shadow-[0_0_40px_rgba(167,139,250,0.6)]"
                 >
                   <MessageCircle className="w-5 h-5" strokeWidth={2} />
-                  <span>Contactar</span>
+                  <span>Contactar Soporte</span>
                 </a>
 
                 <button

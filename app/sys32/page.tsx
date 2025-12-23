@@ -18,12 +18,17 @@ import {
   Shield,
   Crown,
   MessageCircle,
+  Gift,
+  Percent,
+  CheckCircle,
 } from "lucide-react"
 
 const SUPPORT_CONTACTS = [
-  { name: "Sofía — B", phone: "5493416198041" },
-  { name: "Milu — B", phone: "5491160340101" },
-  { name: "Sara — P", phone: "5491160340179" },
+  { name: "1. Sofía — B", phone: "5493416198041" },
+  { name: "2. Milu — B", phone: "5491160340101" },
+  { name: "3. Sara — P", phone: "5491160340179" },
+  { name: "4. Cecilia", phone: "543416132645" },
+  { name: "5. Ludmila", phone: "543416845591" },
   { name: "Otro / Personalizado", phone: "" },
 ]
 
@@ -52,7 +57,7 @@ export default function AdminPage() {
   const [selectedContactIndex, setSelectedContactIndex] = useState<string>("0")
   const [phone, setPhone] = useState("")
   const [supportPhone, setSupportPhone] = useState("")
-  const [selectedSupportContactIndex, setSelectedSupportContactIndex] = useState<string>("3")
+  const [selectedSupportContactIndex, setSelectedSupportContactIndex] = useState<string>("5")
   const [isPhoneEditable, setIsPhoneEditable] = useState(false)
   const [isSupportPhoneEditable, setIsSupportPhoneEditable] = useState(false)
   const [activeAlias, setActiveAlias] = useState("")
@@ -62,13 +67,17 @@ export default function AdminPage() {
   const [userCreationEnabled, setUserCreationEnabled] = useState(true)
   const [transferTimer, setTransferTimer] = useState("30")
   const [minAmount, setMinAmount] = useState("2000")
-  const [activeUserCreationEnabled, setActiveUserCreationEnabled] = useState(true)
-  const [activeTransferTimer, setActiveTransferTimer] = useState(30)
-  const [activeMinAmount, setActiveMinAmount] = useState(2000)
+  const [bonusEnabled, setBonusEnabled] = useState(true)
+  const [bonusPercentage, setBonusPercentage] = useState("25")
+  const [activeBonusEnabled, setActiveBonusEnabled] = useState(true)
+  const [activeBonusPercentage, setActiveBonusPercentage] = useState(25)
   const [adminPin, setAdminPin] = useState("") // Store PIN for config saves
   const [activeSupportPhone, setActiveSupportPhone] = useState("") // Declare the variable
   const [platformUrl, setPlatformUrl] = useState("https://ganamos.sbs")
   const [activePlatformUrl, setActivePlatformUrl] = useState("https://ganamos.sbs")
+  const [activeUserCreationEnabled, setActiveUserCreationEnabled] = useState(true)
+  const [activeTransferTimer, setActiveTransferTimer] = useState(30)
+  const [activeMinAmount, setActiveMinAmount] = useState(2000)
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -126,6 +135,11 @@ export default function AdminPage() {
             setSelectedSupportContactIndex(String(SUPPORT_CONTACTS.length - 1))
             setIsSupportPhoneEditable(false)
           }
+
+          setBonusEnabled(settings.bonusEnabled ?? true)
+          setBonusPercentage(String(settings.bonusPercentage ?? 25))
+          setActiveBonusEnabled(settings.bonusEnabled ?? true)
+          setActiveBonusPercentage(settings.bonusPercentage ?? 25)
         }
       }
     }
@@ -243,6 +257,7 @@ export default function AdminPage() {
   const handleSave = async () => {
     const phoneValue = sanitizePhone(phone.trim())
     const supportPhoneValue = sanitizePhone(supportPhone.trim())
+    const bonusPercentageNum = Number.parseInt(bonusPercentage, 10)
 
     if (!phoneValue || phoneValue.length < 8) {
       alert("Ingresá un teléfono válido (mínimo 8 dígitos)")
@@ -288,14 +303,19 @@ export default function AdminPage() {
     }
 
     const transferTimerNum = Number(transferTimer)
-    if (isNaN(transferTimerNum) || transferTimerNum < 0 || transferTimerNum > 300) {
-      alert("El temporizador debe estar entre 0 y 300 segundos")
+    if (isNaN(transferTimerNum) || transferTimerNum < 10 || transferTimerNum > 300) {
+      alert("El temporizador debe estar entre 10 y 300 segundos")
       return
     }
 
     const minAmountNum = Number(minAmount)
-    if (isNaN(minAmountNum) || minAmountNum < 0) {
-      alert("El monto mínimo debe ser un número válido mayor o igual a 0")
+    if (isNaN(minAmountNum) || minAmountNum < 1000) {
+      alert("El monto mínimo debe ser al menos $1,000")
+      return
+    }
+
+    if (bonusPercentageNum < 0 || bonusPercentageNum > 100) {
+      alert("El porcentaje del bono debe estar entre 0 y 100")
       return
     }
 
@@ -325,6 +345,8 @@ export default function AdminPage() {
           minAmount: minAmountNum,
           support_phone: supportPhoneValue,
           platformUrl: urlTrimmed, // Incluir URL de plataforma en el guardado
+          bonusEnabled: bonusEnabled,
+          bonusPercentage: bonusPercentageNum,
           pin: adminPin,
         }),
       })
@@ -345,6 +367,8 @@ export default function AdminPage() {
         setActiveContactName(SUPPORT_CONTACTS[Number.parseInt(selectedContactIndex)].name)
         setActiveSupportPhone(SUPPORT_CONTACTS[Number.parseInt(selectedSupportContactIndex)].phone)
         setActivePlatformUrl(urlTrimmed) // Actualizar URL activa
+        setActiveBonusEnabled(bonusEnabled)
+        setActiveBonusPercentage(bonusPercentageNum)
 
         alert(
           "✅ Configuración guardada exitosamente en Supabase.\nLos cambios son permanentes y se reflejan en todos los dispositivos.",
@@ -412,6 +436,11 @@ export default function AdminPage() {
             setSelectedSupportContactIndex(String(SUPPORT_CONTACTS.length - 1))
             setIsSupportPhoneEditable(false)
           }
+
+          setBonusEnabled(settings.bonusEnabled ?? true)
+          setBonusPercentage(String(settings.bonusPercentage ?? 25))
+          setActiveBonusEnabled(settings.bonusEnabled ?? true)
+          setActiveBonusPercentage(settings.bonusPercentage ?? 25)
         }
       }
     } catch (error) {
@@ -530,7 +559,7 @@ export default function AdminPage() {
                         className="h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white placeholder:text-gray-500 rounded-xl"
                       />
                       <p className="text-sm text-gray-400 font-medium">
-                        Tiempo de espera en la sección "Esperando transferencia" (0-300 segundos)
+                        Tiempo de espera en la sección "Esperando transferencia" (10-300 segundos)
                       </p>
                     </div>
                   </div>
@@ -558,7 +587,7 @@ export default function AdminPage() {
                         className="h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white placeholder:text-gray-500 rounded-xl"
                       />
                       <p className="text-sm text-gray-400 font-medium">
-                        Monto mínimo requerido para realizar una carga
+                        Monto mínimo requerido para realizar una carga ($1,000 mínimo)
                       </p>
                     </div>
                   </div>
@@ -736,28 +765,52 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  <div className="space-y-3 p-4 rounded-xl border border-purple-600/20 bg-purple-950/10">
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                      <Crown className="w-5 h-5 text-purple-400" strokeWidth={2.5} />
-                      URL de Plataforma
-                    </h3>
-                    <p className="text-sm text-gray-400">
-                      Este link se envía en el mensaje de WhatsApp cuando el usuario confirma su carga
-                    </p>
+                  {/* Configuración del Bono */}
+                  <div className="bg-black/40 backdrop-blur-md border border-purple-600/20 rounded-xl p-6 space-y-4 animate-fadeIn shadow-xl">
+                    <div className="flex items-center gap-3 mb-4">
+                      <Gift className="w-6 h-6 text-purple-500 neon-glow" strokeWidth={2.5} />
+                      <h2 className="text-2xl font-bold text-white neon-text">Configuración del Bono</h2>
+                    </div>
 
-                    <div className="space-y-3">
-                      <Label htmlFor="platform-url" className="text-base text-white font-medium">
-                        Link de Ganamos
-                      </Label>
-                      <Input
-                        id="platform-url"
-                        type="url"
-                        value={platformUrl}
-                        onChange={(e) => setPlatformUrl(e.target.value)}
-                        placeholder="https://ganamos.sbs"
-                        className="h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white placeholder:text-gray-500 rounded-xl"
-                      />
-                      <p className="text-xs text-gray-500 font-medium">Debe comenzar con http:// o https://</p>
+                    <div className="space-y-4">
+                      {/* Toggle para activar/desactivar bono */}
+                      <div className="flex items-center justify-between p-4 bg-black/60 border border-purple-600/30 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-purple-950/50 rounded-lg flex items-center justify-center">
+                            <Gift className="w-5 h-5 text-purple-400" strokeWidth={2} />
+                          </div>
+                          <div>
+                            <label className="text-base font-medium text-white">Bono de primera carga</label>
+                            <p className="text-xs text-gray-400">Activar o desactivar el bono para nuevos usuarios</p>
+                          </div>
+                        </div>
+                        <Switch
+                          checked={bonusEnabled}
+                          onCheckedChange={setBonusEnabled}
+                          className="data-[state=checked]:bg-purple-600"
+                        />
+                      </div>
+
+                      {/* Input para porcentaje del bono */}
+                      <div className="space-y-2">
+                        <label className="text-base font-medium text-white flex items-center gap-2">
+                          <Percent className="w-4 h-4 text-purple-400" />
+                          Porcentaje del Bono
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={bonusPercentage}
+                          onChange={(e) => setBonusPercentage(e.target.value)}
+                          disabled={!bonusEnabled}
+                          className="w-full h-12 px-4 bg-black/60 border border-purple-600/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          placeholder="Ej: 25"
+                        />
+                        <p className="text-xs text-gray-400">
+                          Porcentaje adicional que recibirán los usuarios en su primera carga (0-100%)
+                        </p>
+                      </div>
                     </div>
                   </div>
 
@@ -781,57 +834,60 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                {/* Configuración activa */}
-                {(activeAlias || activePhone) && (
-                  // Card de configuración activa con fondo negro
-                  <div className="bg-black/90 backdrop-blur-xl rounded-2xl border border-purple-600/30 p-4 shadow-[0_0_30px_rgba(124,58,237,0.2)] space-y-3 animate-fadeIn">
-                    <h2 className="text-xl font-black text-white text-center neon-text">Configuración Activa</h2>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-4 rounded-lg border border-purple-600/20 bg-purple-950/10">
-                        <Label className="text-base text-gray-300 font-medium">Crear usuarios:</Label>
-                        <span className="text-base text-white font-bold">
-                          {activeUserCreationEnabled ? "✓ Activado" : "✗ Desactivado"}
-                        </span>
+                {/* Configuración Activa */}
+                <div className="bg-black/40 backdrop-blur-md border border-purple-600/20 rounded-xl p-6 space-y-3 animate-fadeIn shadow-xl">
+                  <div className="flex items-center gap-3 mb-3">
+                    <CheckCircle className="w-6 h-6 text-green-500" strokeWidth={2.5} />
+                    <h2 className="text-2xl font-bold text-white neon-text">Configuración Activa</h2>
+                  </div>
+
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between py-2 border-b border-gray-800/50">
+                      <span className="text-gray-400">Crear usuarios:</span>
+                      <span className="text-white font-medium">
+                        {activeUserCreationEnabled ? "✓ Activado" : "✗ Desactivado"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between py-2 border-b border-gray-800/50">
+                      <span className="text-gray-400">Temporizador:</span>
+                      <span className="text-white font-medium">{activeTransferTimer}s</span>
+                    </div>
+                    <div className="flex justify-between py-2 border-b border-gray-800/50">
+                      <span className="text-gray-400">Monto mínimo:</span>
+                      <span className="text-white font-medium">${activeMinAmount}</span>
+                    </div>
+                    {activeAlias && (
+                      <div className="flex justify-between py-2 border-b border-gray-800/50">
+                        <span className="text-gray-400">{activePaymentType === "alias" ? "Alias:" : "CBU:"}</span>
+                        <span className="text-white font-medium font-mono">{activeAlias}</span>
                       </div>
-                      <div className="flex items-center justify-between p-4 rounded-lg border border-purple-600/20 bg-purple-950/10">
-                        <Label className="text-base text-gray-300 font-medium">Temporizador:</Label>
-                        <span className="text-base text-purple-400 font-bold">{activeTransferTimer}s</span>
+                    )}
+                    {activePhone && (
+                      <div className="flex justify-between py-2 border-b border-gray-800/50">
+                        <span className="text-gray-400">Atención:</span>
+                        <span className="text-white font-medium font-mono">{activePhone}</span>
                       </div>
-                      <div className="flex items-center justify-between p-4 rounded-lg border border-purple-600/20 bg-purple-950/10">
-                        <Label className="text-base text-gray-300 font-medium">Monto mínimo:</Label>
-                        <span className="text-base text-purple-400 font-bold">${activeMinAmount}</span>
+                    )}
+                    {activeSupportPhone && (
+                      <div className="flex justify-between py-2 border-b border-gray-800/50">
+                        <span className="text-gray-400">Soporte:</span>
+                        <span className="text-white font-medium font-mono">{activeSupportPhone}</span>
                       </div>
-                      {activeAlias && (
-                        <div className="flex items-center justify-between p-4 rounded-lg border border-purple-600/20 bg-purple-950/10">
-                          <Label className="text-base text-gray-300 font-medium">
-                            {activePaymentType === "alias" ? "Alias:" : "CBU:"}
-                          </Label>
-                          <span className="text-base text-purple-400 font-bold font-mono">{activeAlias}</span>
-                        </div>
-                      )}
-                      {activePhone && (
-                        <div className="flex items-center justify-between p-4 rounded-lg border border-purple-600/20 bg-purple-950/10">
-                          <Label className="text-base text-gray-300 font-medium">Atención:</Label>
-                          <span className="text-base text-purple-400 font-bold font-mono">{activePhone}</span>
-                        </div>
-                      )}
-                      {activeSupportPhone && (
-                        <div className="flex items-center justify-between p-4 rounded-lg border border-purple-600/20 bg-purple-950/10">
-                          <Label className="text-base text-gray-300 font-medium">Soporte:</Label>
-                          <span className="text-base text-purple-400 font-bold font-mono">{activeSupportPhone}</span>
-                        </div>
-                      )}
-                      {activePlatformUrl && (
-                        <div className="flex items-center justify-between p-4 rounded-lg border border-purple-600/20 bg-purple-950/10">
-                          <Label className="text-base text-gray-300 font-medium">URL Plataforma:</Label>
-                          <span className="text-base text-purple-400 font-bold truncate max-w-[200px]">
-                            {activePlatformUrl}
-                          </span>
-                        </div>
-                      )}
+                    )}
+                    {activePlatformUrl && (
+                      <div className="flex justify-between py-2 border-b border-gray-800/50">
+                        <span className="text-gray-400">URL Plataforma:</span>
+                        <span className="text-white font-medium truncate max-w-[200px]">{activePlatformUrl}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between py-2 border-b border-gray-800/50">
+                      <span className="text-gray-400">Bono Primera Carga:</span>
+                      <span className="text-white font-medium">
+                        {activeBonusEnabled ? `✓ ${activeBonusPercentage}%` : "✗ Desactivado"}
+                      </span>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
             </div>
           )}
