@@ -461,7 +461,7 @@ Adjunto comprobante.`
         </div>
       )}
 
-      <div className="container relative z-10 mx-auto max-w-md pt-20 pb-24 px-6">
+      <div className="container relative z-10 mx-auto max-w-md pt-8 pb-24 px-6">
         {isDropdownOpen && (
           <div className="fixed inset-0 z-50 bg-transparent" onClick={() => setIsDropdownOpen(false)} />
         )}
