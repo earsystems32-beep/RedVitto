@@ -59,6 +59,7 @@ export default function TheCrown() {
   const [montoInput, setMontoInput] = useState("")
   const [username, setUsername] = useState("")
   const [copied, setCopied] = useState(false) // Renamed from copiedAlias for clarity
+  const [platformUrl, setPlatformUrl] = useState("https://ganamos.sbs")
 
   // Separated config loading to only set timer when not in use
   useEffect(() => {
@@ -85,6 +86,7 @@ export default function TheCrown() {
 
             setMinAmount(data.settings.minAmount ?? 2000)
             setPaymentData(data.settings.paymentData || "") // Cargar alias/cbu
+            setPlatformUrl(data.settings.platformUrl || "https://ganamos.sbs")
           }
         }
       } catch (error) {
@@ -311,10 +313,10 @@ export default function TheCrown() {
   // Modified to use the updated handleWhatsApp function
   const handleWhatsApp = useCallback(() => {
     const plataformaGuardada = localStorage.getItem("eds_platform") || plataforma
-    let plataformaURL = ""
+    let plataformaURL = platformUrl // Usar el URL de configuración
 
     if (plataformaGuardada === "g") {
-      plataformaURL = "https://ganamos.sbs"
+      plataformaURL = platformUrl
     } else if (plataformaGuardada === "z") {
       plataformaURL = "https://casinozeus.fit"
     }
@@ -332,7 +334,7 @@ Hora de transferencia: ${transferTime}
 Adjunto comprobante.`
     const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
     window.open(url, "_blank")
-  }, [plataforma, usuario, titular, monto, transferTime, formatCurrency, password, phoneNumber])
+  }, [plataforma, usuario, titular, monto, transferTime, formatCurrency, password, phoneNumber, platformUrl])
 
   // Updated openInfoModal function
   const openInfoModal = useCallback(() => {
@@ -553,7 +555,7 @@ Adjunto comprobante.`
 
                 <button
                   onClick={closeInfoModal}
-                  className="w-full h-14 btn-gradient-animated text-white font-semibold rounded-xl transition-all hover:scale-105"
+                  className="w-full h-14 btn-gradient-animated text-white font-semibold rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(167,139,250,0.6)]"
                 >
                   Entendido
                 </button>

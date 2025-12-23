@@ -67,6 +67,8 @@ export default function AdminPage() {
   const [activeMinAmount, setActiveMinAmount] = useState(2000)
   const [adminPin, setAdminPin] = useState("") // Store PIN for config saves
   const [activeSupportPhone, setActiveSupportPhone] = useState("") // Declare the variable
+  const [platformUrl, setPlatformUrl] = useState("https://ganamos.sbs")
+  const [activePlatformUrl, setActivePlatformUrl] = useState("https://ganamos.sbs")
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -88,6 +90,8 @@ export default function AdminPage() {
           setActiveMinAmount(settings.minAmount ?? 2000)
           setPhone(settings.phone || "")
           setSupportPhone(settings.support_phone || "")
+          setPlatformUrl(settings.platformUrl || "https://ganamos.sbs")
+          setActivePlatformUrl(settings.platformUrl || "https://ganamos.sbs")
 
           setAlias(settings.alias || "")
           setPaymentType(settings.paymentType || "alias")
@@ -295,6 +299,16 @@ export default function AdminPage() {
       return
     }
 
+    const urlTrimmed = platformUrl.trim()
+    if (!urlTrimmed) {
+      alert("Ingresá una URL válida para la plataforma")
+      return
+    }
+    if (!urlTrimmed.startsWith("http://") && !urlTrimmed.startsWith("https://")) {
+      alert("La URL debe comenzar con http:// o https://")
+      return
+    }
+
     try {
       const response = await fetch("/api/admin/settings", {
         method: "POST",
@@ -310,6 +324,7 @@ export default function AdminPage() {
           timerSeconds: transferTimerNum,
           minAmount: minAmountNum,
           support_phone: supportPhoneValue,
+          platformUrl: urlTrimmed, // Incluir URL de plataforma en el guardado
           pin: adminPin,
         }),
       })
@@ -328,7 +343,8 @@ export default function AdminPage() {
         setActiveTransferTimer(transferTimerNum)
         setActiveMinAmount(minAmountNum)
         setActiveContactName(SUPPORT_CONTACTS[Number.parseInt(selectedContactIndex)].name)
-        setActiveSupportPhone(SUPPORT_CONTACTS[Number.parseInt(selectedSupportContactIndex)].phone) // Set activeSupportPhone
+        setActiveSupportPhone(SUPPORT_CONTACTS[Number.parseInt(selectedSupportContactIndex)].phone)
+        setActivePlatformUrl(urlTrimmed) // Actualizar URL activa
 
         alert(
           "✅ Configuración guardada exitosamente en Supabase.\nLos cambios son permanentes y se reflejan en todos los dispositivos.",
@@ -360,6 +376,8 @@ export default function AdminPage() {
           setActiveMinAmount(settings.minAmount ?? 2000)
           setPhone(settings.phone || "")
           setSupportPhone(settings.support_phone || "")
+          setPlatformUrl(settings.platformUrl || "https://ganamos.sbs")
+          setActivePlatformUrl(settings.platformUrl || "https://ganamos.sbs")
 
           setAlias(settings.alias || "")
           setPaymentType(settings.paymentType || "alias")
@@ -718,6 +736,31 @@ export default function AdminPage() {
                     </div>
                   </div>
 
+                  <div className="space-y-3 p-4 rounded-xl border border-purple-600/20 bg-purple-950/10">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                      <Crown className="w-5 h-5 text-purple-400" strokeWidth={2.5} />
+                      URL de Plataforma
+                    </h3>
+                    <p className="text-sm text-gray-400">
+                      Este link se envía en el mensaje de WhatsApp cuando el usuario confirma su carga
+                    </p>
+
+                    <div className="space-y-3">
+                      <Label htmlFor="platform-url" className="text-base text-white font-medium">
+                        Link de Ganamos
+                      </Label>
+                      <Input
+                        id="platform-url"
+                        type="url"
+                        value={platformUrl}
+                        onChange={(e) => setPlatformUrl(e.target.value)}
+                        placeholder="https://ganamos.sbs"
+                        className="h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white placeholder:text-gray-500 rounded-xl"
+                      />
+                      <p className="text-xs text-gray-500 font-medium">Debe comenzar con http:// o https://</p>
+                    </div>
+                  </div>
+
                   {/* Botones con gradientes animados */}
                   <div className="flex gap-4 pt-2">
                     <button
@@ -763,19 +806,27 @@ export default function AdminPage() {
                           <Label className="text-base text-gray-300 font-medium">
                             {activePaymentType === "alias" ? "Alias:" : "CBU:"}
                           </Label>
-                          <span className="text-base text-white font-bold truncate">{activeAlias}</span>
+                          <span className="text-base text-purple-400 font-bold font-mono">{activeAlias}</span>
                         </div>
                       )}
                       {activePhone && (
                         <div className="flex items-center justify-between p-4 rounded-lg border border-purple-600/20 bg-purple-950/10">
                           <Label className="text-base text-gray-300 font-medium">Atención:</Label>
-                          <span className="text-base text-white font-bold truncate">{activeContactName}</span>
+                          <span className="text-base text-purple-400 font-bold font-mono">{activePhone}</span>
                         </div>
                       )}
                       {activeSupportPhone && (
                         <div className="flex items-center justify-between p-4 rounded-lg border border-purple-600/20 bg-purple-950/10">
                           <Label className="text-base text-gray-300 font-medium">Soporte:</Label>
-                          <span className="text-base text-white font-bold truncate">{activeSupportPhone}</span>
+                          <span className="text-base text-purple-400 font-bold font-mono">{activeSupportPhone}</span>
+                        </div>
+                      )}
+                      {activePlatformUrl && (
+                        <div className="flex items-center justify-between p-4 rounded-lg border border-purple-600/20 bg-purple-950/10">
+                          <Label className="text-base text-gray-300 font-medium">URL Plataforma:</Label>
+                          <span className="text-base text-purple-400 font-bold truncate max-w-[200px]">
+                            {activePlatformUrl}
+                          </span>
                         </div>
                       )}
                     </div>
