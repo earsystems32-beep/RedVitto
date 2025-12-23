@@ -1,35 +1,31 @@
 "use client"
-
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import type React from "react"
 import { useState, useEffect, useCallback } from "react"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import {
   Check,
   Copy,
   Crown,
   MessageCircle,
-  CheckCircle,
   ArrowLeft,
   AlertCircle,
-  DollarSign,
   X,
   Hourglass,
   Gift,
   Shield,
   Users,
-  AlertTriangle,
+  Wallet,
+  Clock,
+  TrendingUp,
 } from "lucide-react"
 
-export default function REDvitto36() {
+export default function TheCrown() {
   const [step, setStep] = useState(1)
   const [apodo, setApodo] = useState("")
   const [digitos, setDigitos] = useState("")
-  const [plataforma, setPlataforma] = useState("")
+  const [plataforma, setPlataforma] = useState("g") // Fija en "Ganamos"
   const [usuario, setUsuario] = useState("")
   const [transferTime, setTransferTime] = useState("")
   const [titular, setTitular] = useState("")
@@ -39,6 +35,8 @@ export default function REDvitto36() {
   const [apodoError, setApodoError] = useState("")
   const [plataformaError, setPlataformaError] = useState("")
   const [titularError, setTitularError] = useState("")
+  const [montoError, setMontoError] = useState("")
+  // Renamed state for modal
   const [showInfoModal, setShowInfoModal] = useState(false)
   const [isModalAnimating, setIsModalAnimating] = useState(false)
   const [isStepAnimating, setIsStepAnimating] = useState(true)
@@ -55,6 +53,12 @@ export default function REDvitto36() {
   const [phoneNumber, setPhoneNumber] = useState("543415481923")
   const [paymentType, setPaymentType] = useState<"alias" | "cbu">("alias")
   const [originalTimerSeconds, setOriginalTimerSeconds] = useState(30)
+  const [paymentData, setPaymentData] = useState("") // Para alias o cbu
+
+  // New state for amount input formatting
+  const [montoInput, setMontoInput] = useState("")
+  const [username, setUsername] = useState("")
+  const [copied, setCopied] = useState(false) // Renamed from copiedAlias for clarity
 
   // Separated config loading to only set timer when not in use
   useEffect(() => {
@@ -80,6 +84,7 @@ export default function REDvitto36() {
             }
 
             setMinAmount(data.settings.minAmount ?? 2000)
+            setPaymentData(data.settings.paymentData || "") // Cargar alias/cbu
           }
         }
       } catch (error) {
@@ -93,7 +98,7 @@ export default function REDvitto36() {
     return () => clearInterval(interval)
   }, [timerHasStarted])
 
-  const password = "aaa111"
+  const password = "12345678"
 
   const paymentLabel = paymentType === "alias" ? "Alias" : "CBU"
   const minAmountStr = String(minAmount)
@@ -111,6 +116,7 @@ export default function REDvitto36() {
       const savedUsername = localStorage.getItem("eds_username")
       if (savedUsername) {
         setUsuario(savedUsername)
+        setUsername(savedUsername) // Set username state here as well
       }
       const savedTime = localStorage.getItem("eds_transfer_time")
       if (savedTime) {
@@ -208,24 +214,10 @@ export default function REDvitto36() {
     return `${day}/${month}/${year} ${hours}:${minutes}`
   }, [])
 
-  const formatMontoArgentino = useCallback((value: string): string => {
-    const cleaned = value.replace(/[^\d.,]/g, "")
-    const normalized = cleaned.replace(",", ".")
-    const num = Number.parseFloat(normalized)
-
-    if (isNaN(num)) return value
-
-    const parts = num.toFixed(2).split(".")
-    const integerPart = parts[0]
-    const decimalPart = parts[1]
-
-    const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".")
-
-    if (decimalPart && decimalPart !== "00") {
-      return `${formattedInteger},${decimalPart}`
-    }
-
-    return formattedInteger
+  const formatCurrency = useCallback((value: number | string): string => {
+    const num = typeof value === "string" ? Number.parseFloat(value.replace(/,/g, ".")) : value
+    if (isNaN(num)) return "0"
+    return new Intl.NumberFormat("es-AR").format(num)
   }, [])
 
   const handleApodoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -252,6 +244,13 @@ export default function REDvitto36() {
     }
   }, [])
 
+  const handleDigitosChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    if (/^\d*$/.test(value) && value.length <= 4) {
+      setDigitos(value)
+    }
+  }, [])
+
   const handleCreateUser = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault()
@@ -264,21 +263,18 @@ export default function REDvitto36() {
         alert("Ingresá 4 dígitos.")
         return
       }
-      if (!isPlataformaValid(plataforma)) {
-        setPlataformaError("Elegí una opción para continuar.")
-        alert("Elegí una opción de plataforma.")
-        return
-      }
+      // Plataforma ya es fija, no necesita validación aquí
 
       const apodoSan = sanitizeName(apodo)
       const apodoCapitalized = apodoSan.charAt(0).toUpperCase() + apodoSan.slice(1)
-      const generatedUser = `${apodoCapitalized}${digitos}${plataforma}01`
+      const generatedUser = `${apodoCapitalized}${digitos}00g`
       setUsuario(generatedUser)
+      setUsername(generatedUser) // Set username state for step 3
       localStorage.setItem("eds_username", generatedUser)
       localStorage.setItem("eds_platform", plataforma)
-      changeStep(3)
+      setStep(3) // Directly set step instead of calling changeStep
     },
-    [apodo, digitos, plataforma, isApodoValid, isDigitosValid, isPlataformaValid, sanitizeName],
+    [apodo, digitos, plataforma, isApodoValid, isDigitosValid, sanitizeName],
   )
 
   const copyToClipboard = useCallback((text: string) => {
@@ -291,37 +287,54 @@ export default function REDvitto36() {
     }, 1500)
   }, [])
 
+  // Renamed to copyPaymentData for clarity
+  const copyPaymentData = useCallback(() => {
+    if (paymentData) {
+      navigator.clipboard.writeText(paymentData)
+      setCopied(true)
+      setShowToast(true)
+      setTimeout(() => {
+        setCopied(false)
+        setShowToast(false)
+      }, 1500)
+    }
+  }, [paymentData])
+
   const handleTransferConfirmation = useCallback(() => {
     const now = new Date()
     const formattedTime = formatDateTime(now)
     localStorage.setItem("eds_transfer_time", formattedTime)
     setTransferTime(formattedTime)
-    changeStep(5)
+    setStep(5) // Directly set step instead of calling changeStep
   }, [formatDateTime])
 
-  const openWhatsApp = useCallback(() => {
-    const username = localStorage.getItem("eds_username") || ""
-    if (!username) {
-      alert("Generá tu usuario primero")
-      return
+  // Modified to use the updated handleWhatsApp function
+  const handleWhatsApp = useCallback(() => {
+    const plataformaGuardada = localStorage.getItem("eds_platform") || plataforma
+    let plataformaURL = ""
+
+    if (plataformaGuardada === "g") {
+      plataformaURL = "https://ganamos.sbs"
+    } else if (plataformaGuardada === "z") {
+      plataformaURL = "https://casinozeus.fit"
     }
 
-    if (!titular.trim() || !monto.trim()) {
-      alert("Completá los datos de titular y monto antes de continuar.")
-      return
-    }
+    const message = `Hola, ya envié mi c4rg4.
 
-    const time = localStorage.getItem("eds_transfer_time") || "sin hora registrada"
-    const montoFormateado = formatMontoArgentino(monto)
-    const platform = localStorage.getItem("eds_platform") || ""
-    const platformName =
-      platform === "g" ? "https://ganamos.sbs" : platform === "z" ? "https://casinozeus.fit" : "No especificada"
+Usu4rio: ${usuario}
+Contr4seña: ${password}
+Quiero jug4r en: ${plataformaURL}
 
-    const msg = `Hola, ya envié mi c4rg4.\n\nUsu4rio: ${username}\nContr4seña: ${password}\nQuiero jug4r en: ${platformName}\n\nTitular: ${titular}\nMonto: $${montoFormateado}\nHora de transferencia: ${time}\nAdjunto comprobante.`
-    const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(msg)}`
+Titular: ${titular}
+Monto: $${formatCurrency(monto)}
+Hora de transferencia: ${transferTime}
+
+Adjunto comprobante.`
+    const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
     window.open(url, "_blank")
-  }, [titular, monto, formatMontoArgentino, password, phoneNumber])
+  }, [plataforma, usuario, titular, monto, transferTime, formatCurrency, password, phoneNumber])
 
+  // Updated openInfoModal function
   const openInfoModal = useCallback(() => {
     setShowInfoModal(true)
     setTimeout(() => setIsModalAnimating(true), 10)
@@ -335,12 +348,12 @@ export default function REDvitto36() {
 
   const isSoporteButtonEnabled = titular.trim().length > 0 && monto.trim().length > 0
 
-  const changeStep = useCallback((newStep: number) => {
+  const changeStep = useCallback((newStep: number, direction: "forward" | "back" = "forward") => {
     setIsStepAnimating(false)
     setTimeout(() => {
       setStep(newStep)
-      setTimeout(() => setIsStepAnimating(true), 10)
-    }, 300)
+      setTimeout(() => setIsStepAnimating(true), 50)
+    }, 400)
   }, [])
 
   const handleInputBlur = useCallback(() => {
@@ -359,6 +372,65 @@ export default function REDvitto36() {
     }, 300)
   }, [])
 
+  const handleWhatsAppSend = useCallback(() => {
+    // Lógica para enviar mensaje de WhatsApp con los datos del paso 5
+    // Esta función se llama desde el botón de "Acreditar mi carga" en el paso 5
+    handleWhatsApp() // Reutilizamos la lógica de handleWhatsApp
+    setStep(7) // Directly set step instead of calling changeStep
+  }, [handleWhatsApp])
+
+  // This function seems redundant with handleWhatsAppSend now, but kept for potential future use
+  const handleContinueTransfer = useCallback(() => {
+    if (!titular || !monto) {
+      // Basic validation, specific errors are handled inline
+      alert("Por favor, completá todos los campos.")
+      return
+    }
+    // Simulate sending data or moving to next step
+    // For now, we assume it leads to confirming the transfer
+    setStep(5) // Directly set step instead of calling changeStep
+  }, [titular, monto])
+
+  // Modified handleMontoChange to use formatCurrency and update montoInput state
+  const handleMontoChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value.replace(/[^0-9,.]/g, "") // Allow numbers, commas, and periods
+      setMontoInput(value) // Keep the input as typed
+
+      const cleanedValue = value.replace(/,/g, ".") // Normalize comma to dot for parsing
+      const num = Number.parseFloat(cleanedValue)
+
+      if (!isNaN(num)) {
+        if (num < minAmount) {
+          setMontoError(`El monto mínimo es $${formatCurrency(minAmount)}`)
+        } else {
+          setMontoError("")
+        }
+        // Update the actual 'monto' state with formatted value if needed elsewhere, or just use formatted input
+        // For submission, you'll likely want the parsed number or a consistently formatted string
+      } else if (value.trim() === "") {
+        setMontoError("") // Clear error if input is empty
+        setMonto("") // Clear actual monto state if input is empty
+      } else {
+        setMontoError("Formato de monto inválido")
+      }
+    },
+    [minAmount, formatCurrency],
+  )
+
+  // This useEffect updates the 'monto' state from 'montoInput' when it's considered valid for submission,
+  // or when transitioning steps where 'monto' is used.
+  // It ensures 'monto' has a clean, parsable numeric string or is formatted correctly.
+  useEffect(() => {
+    const cleanedValue = montoInput.replace(/,/g, ".")
+    const num = Number.parseFloat(cleanedValue)
+    if (!isNaN(num) && num >= minAmount) {
+      setMonto(cleanedValue) // Store a parsable version
+    } else {
+      setMonto("") // Clear if invalid or below minimum
+    }
+  }, [montoInput, minAmount])
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       // Check for reset query parameter (for testing)
@@ -369,690 +441,635 @@ export default function REDvitto36() {
     }
   }, [])
 
+  const handleCopyAlias = useCallback(() => {
+    copyToClipboard(paymentData || alias || "No configurado")
+  }, [paymentData, alias, copyToClipboard])
+
   return (
-    <div className="min-h-[100svh] relative overflow-hidden pb-16">
-      {isDropdownOpen && <div className="fixed inset-0 z-50 bg-transparent" onClick={() => setIsDropdownOpen(false)} />}
-
-      {showBonusModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div
-            className={`relative w-full max-w-md bg-[#1a1a1a] rounded-2xl shadow-2xl transition-all duration-300 ${
-              isBonusModalAnimating ? "scale-100 opacity-100" : "scale-95 opacity-0"
-            }`}
-          >
-            <div className="p-6 space-y-6">
-              <div className="flex items-center gap-3 justify-center">
-                <Gift className="w-8 h-8 text-[#FF8C00]" strokeWidth={2.5} />
-                <h2 className="text-2xl font-bold text-[#FF8C00]">Felicitaciones! </h2>
-              </div>
-
-              <div className="space-y-4 text-center">
-                <div className="bg-gradient-to-br from-[#FF8C00]/20 to-[#FFB800]/10 border-2 border-[#FF8C00]/30 rounded-xl p-6 px-6 py-3">
-                  <p className="text-3xl font-bold text-[#FF8C00] mb-2">25% Adicional</p>
-                  <p className="text-lg text-white font-semibold">¡En tu primera carga!</p>
-                </div>
-
-                <div className="bg-[#2a2a2a] rounded-lg p-4 border border-white/10 py-1">
-                  <p className="text-sm text-white/90 leading-relaxed">
-                    Recordá, el bono <span className="font-bold text-[#FF8C00]">no forma parte del premio</span>.
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={closeBonusModal}
-                className="w-full h-12 bg-gradient-to-b from-[#FFB800] to-[#FF8C00] hover:from-[#FFC300] hover:to-[#FFB800] text-black font-bold rounded-lg transition-all duration-200 shadow-lg text-base"
-              >
-                Aceptar
-              </button>
-            </div>
+    <div className="relative min-h-screen w-full overflow-x-hidden bg-black">
+      {showToast && (
+        <div
+          className="fixed left-1/2 top-20 z-50 -translate-x-1/2 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-black shadow-2xl border border-gray-200"
+          style={{ animation: "slideDown 0.3s ease" }}
+        >
+          <div className="flex items-center gap-2">
+            <Check className="h-5 w-5 text-purple-600" strokeWidth={2} />
+            <span>Copiado</span>
           </div>
         </div>
       )}
 
-      {showInfoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div
-            className={`relative w-full max-w-md bg-[#1a1a1a] rounded-2xl shadow-2xl transition-all duration-300 ${
-              isModalAnimating ? "scale-100 opacity-100" : "scale-95 opacity-0"
-            }`}
-          >
-            <button
-              onClick={closeInfoModal}
-              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors duration-200"
+      <div className="container relative z-10 mx-auto max-w-md pt-20 pb-24 px-6">
+        {isDropdownOpen && (
+          <div className="fixed inset-0 z-50 bg-transparent" onClick={() => setIsDropdownOpen(false)} />
+        )}
+
+        {/* Bonus Modal */}
+        {showBonusModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
+            <div
+              className={`relative w-full max-w-sm bg-black border border-purple-600/30 rounded-2xl shadow-2xl transition-all duration-300 ${
+                isBonusModalAnimating ? "scale-100 opacity-100" : "scale-95 opacity-0"
+              }`}
             >
-              <X className="w-5 h-5 text-white" />
-            </button>
+              {/* Fondo cambiado de blanco a negro con borde morado */}
+              <div className="p-8 space-y-6">
+                <div className="flex items-center gap-3 justify-center">
+                  <Gift className="w-10 h-10 text-purple-500" strokeWidth={2} />
+                  <h2 className="text-3xl font-bold text-white">¡Felicitaciones!</h2>
+                </div>
 
-            <div className="p-6 space-y-6">
-              <div className="flex items-center gap-2">
-                <Crown
-                  className="w-6 h-6 text-primary"
-                  strokeWidth={2.5}
-                  style={{
-                    filter: "drop-shadow(0 0 8px rgba(255, 140, 0, 0.5))",
-                  }}
-                />
-                <CardTitle className="text-2xl font-bold text-[#FF8C00]">Información y cronograma</CardTitle>
+                <div className="space-y-4 text-center">
+                  <div className="bg-purple-950/50 border border-purple-600/30 rounded-xl p-6">
+                    <p className="text-5xl font-bold text-purple-400 mb-2">25%</p>
+                    <p className="text-lg text-white font-medium">Adicional en tu primera carga</p>
+                  </div>
+
+                  <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-700">
+                    <p className="text-sm text-gray-300 leading-relaxed">
+                      Recordá, el bono <span className="font-bold text-purple-400">no forma parte del premio</span>.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={closeBonusModal}
+                  className="w-full h-14 btn-gradient-animated text-white font-semibold rounded-xl transition-all hover:scale-105"
+                >
+                  Aceptar
+                </button>
               </div>
+            </div>
+          </div>
+        )}
 
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <Hourglass className="w-6 h-6 text-[#FF8C00] shrink-0 mt-1" strokeWidth={2} />
-                  <div>
-                    <h3 className="font-bold text-white mb-1">Sin cronograma de pagos</h3>
-                    <p className="text-sm text-white/80 leading-relaxed">Los retiros se procesan de forma continua</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <DollarSign className="w-6 h-6 text-[#FF8C00] shrink-0 mt-1" strokeWidth={2} />
-                  <div>
-                    <h3 className="font-bold text-white mb-1">Retiros sin límite</h3>
-                    <p className="text-sm text-white/80 leading-relaxed">
-                      Podés retirar tus fondos las veces que quieras, en cualquier momento del día, las 24 horas.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <CheckCircle className="w-6 h-6 text-[#FF8C00] shrink-0 mt-1" strokeWidth={2} />
-                  <div>
-                    <h3 className="font-bold text-white mb-1">Disponibilidad inmediata</h3>
-                    <p className="text-sm text-white/80 leading-relaxed">
-                      Los pagos se acreditan en el mismo día según la demanda y disponibilidad del soporte.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-6 h-6 text-[#FF8C00] shrink-0 mt-1" strokeWidth={2} />
-                  <div>
-                    <h3 className="font-bold text-white mb-1">Soporte activo</h3>
-                    <p className="text-sm text-white/80 leading-relaxed">
-                      Ante cualquier duda, podés comunicarte con un operador para asistencia personalizada.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <p className="text-xs text-white/60 italic leading-relaxed">{""}</p>
-
+        {/* Modal de Retiros - Updated content */}
+        {showInfoModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
+            <div
+              className={`relative w-full max-w-sm bg-black rounded-2xl shadow-2xl border border-purple-600/30 transition-all duration-300 ${
+                isModalAnimating ? "scale-100 opacity-100" : "scale-95 opacity-0"
+              }`}
+            >
               <button
                 onClick={closeInfoModal}
-                className="w-full h-12 bg-gradient-to-b from-[#FFB800] to-[#FF8C00] hover:from-[#FFC300] hover:to-[#FFB800] text-white font-bold rounded-lg transition-all duration-200 shadow-lg"
+                className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-gray-900 hover:bg-gray-800 transition-colors"
               >
-                Cerrar
+                <X className="w-5 h-5 text-gray-400" strokeWidth={2} />
               </button>
+
+              <div className="p-8 space-y-6">
+                <div className="flex items-center gap-3">
+                  <Wallet className="w-8 h-8 text-purple-500" strokeWidth={2} />
+                  <h2 className="text-2xl font-bold text-white">Modalidad de Retiros</h2>
+                </div>
+
+                <div className="space-y-5 text-sm text-gray-300 leading-relaxed">
+                  <div className="bg-purple-950/30 border border-purple-600/30 rounded-xl p-4">
+                    <h3 className="font-bold text-purple-400 mb-2 flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5" strokeWidth={2} />
+                      Límites por retiro
+                    </h3>
+                    <p>
+                      Podés realizar hasta <strong className="text-white">2 retiros</strong> de máximo{" "}
+                      <strong className="text-white">$125.000</strong> cada uno.
+                    </p>
+                  </div>
+
+                  <div className="bg-purple-950/30 border border-purple-600/30 rounded-xl p-4">
+                    <h3 className="font-bold text-purple-400 mb-2 flex items-center gap-2">
+                      <Clock className="w-5 h-5" strokeWidth={2} />
+                      Límite diario
+                    </h3>
+                    <p>
+                      Total máximo de <strong className="text-white">$250.000</strong> cada 24 horas.
+                    </p>
+                  </div>
+
+                  <div className="text-center text-xs text-gray-500 pt-2">
+                    Los retiros se procesan de forma inmediata una vez aprobados.
+                  </div>
+                </div>
+
+                <button
+                  onClick={closeInfoModal}
+                  className="w-full h-14 btn-gradient-animated text-white font-semibold rounded-xl transition-all hover:scale-105"
+                >
+                  Entendido
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <div
-        className="fixed inset-0 bg-gradient-to-br from-[#0a0a0a] via-[#1a1a1a] to-[#000000] animate-[gradientShift_15s_ease_infinite] text-gray-950 opacity-100"
-        style={{
-          backgroundSize: "200% 200%",
-        }}
-      />
-      <div className="fixed top-20 left-10 w-64 h-64 bg-accent/10 rounded-full blur-3xl animate-[float_8s_ease-in-out_infinite]" />
-
-      <div className="relative z-10">
+        {/* PASO 1 - Bienvenida SIN CARD */}
         {step === 1 && (
           <div
-            className={`transition-all duration-[350ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
-              isStepAnimating
-                ? "opacity-100 translate-y-0 scale-100 blur-0 rotate-0"
-                : "opacity-0 translate-y-8 scale-90 blur-sm -rotate-1"
+            className={`transition-all duration-500 ease-out ${
+              isStepAnimating ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-8 scale-95"
             }`}
+            style={{
+              animation: isStepAnimating ? "scalePopIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
+            }}
           >
-            <div className="py-12 px-3">
-              <Card className="shadow-md backdrop-blur-md bg-card/90 border-transparent p-3 px-0">
-                <CardContent className="space-y-6 pt-12 pb-12">
-                  <div className="flex justify-center">
-                    <Crown
-                      className="w-12 h-12 text-primary animate-pulse"
-                      strokeWidth={2.5}
-                      style={{
-                        filter: "drop-shadow(0 0 12px rgba(255, 140, 0, 0.6)) drop-shadow(0 2px 4px rgba(0,0,0,0.4))",
-                      }}
-                    />
-                  </div>
-                  <h1
-                    className="text-5xl md:text-6xl font-semibold text-center"
-                    style={{
-                      background: "linear-gradient(180deg, #FFB800 0%, #FF8C00 50%, #D97706 100%)",
-                      WebkitBackgroundClip: "text",
-                      WebkitTextFillColor: "transparent",
-                      backgroundClip: "text",
-                      filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.3)) drop-shadow(0 0 20px rgba(255, 140, 0, 0.3))",
-                      textShadow: "0 2px 8px rgba(217, 119, 6, 0.4)",
-                    }}
+            <div className="text-center space-y-16">
+              <div className="space-y-4">
+                <Crown className="w-20 h-20 text-purple-500 mx-auto mb-6" strokeWidth={1.5} />
+                <h1 className="text-6xl font-bold tracking-tight text-white">TheCrown</h1>
+                <p className="text-lg text-gray-400 font-normal">Plataforma Premium de Pagos</p>
+              </div>
+
+              <div className="space-y-5">
+                {userCreationEnabled && (
+                  <button
+                    onClick={() => changeStep(2, "forward")}
+                    className="w-full h-14 btn-gradient-animated text-white font-semibold text-lg rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(167,139,250,0.6)]"
                   >
-                    REDvitto36
-                  </h1>
-                  <p className="text-lg md:text-xl text-muted-foreground font-normal text-center">
-                    Creá tu usuario y empezá a jugar!
-                  </p>
-                  <div className="flex flex-col items-center gap-3 pt-4">
-                    <button
-                      onClick={() => (userCreationEnabled ? changeStep(2) : null)}
-                      disabled={!userCreationEnabled}
-                      className={`btn-liquid-glass max-w-[320px] min-w-[240px] h-12 px-5 text-base rounded-lg transition-all duration-200 leading-tight truncate text-black font-bold ${
-                        !userCreationEnabled ? "opacity-50 cursor-not-allowed" : ""
-                      }`}
-                    >
-                      {userCreationEnabled ? "Crear mi usuario" : "Intente más tarde"}
-                    </button>
-                    <Button
-                      onClick={openInfoModal}
-                      variant="outline"
-                      className="max-w-[320px] min-w-[240px] h-12 text-base border-border hover:bg-muted hover:border-primary/50 transition-all duration-200 font-normal text-muted-foreground bg-transparent"
-                    >
-                      Información y cronograma
-                    </Button>
-                    <Button
-                      onClick={() => changeStep(7)} // Changed to navigate to step 7 instead of scrolling
-                      variant="outline"
-                      className="max-w-[320px] min-w-[240px] h-12 text-base border-border hover:bg-muted hover:border-primary/50 transition-all duration-200 font-normal text-muted-foreground bg-transparent"
-                    >
+                    Crear Usuario
+                  </button>
+                )}
+
+                {/* Updated buttons: removed Horarios, changed Info to Retiros, only 2 buttons */}
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={openInfoModal}
+                    className="flex flex-col items-center gap-2 py-4 rounded-xl border border-gray-800 hover:border-purple-600 transition-colors group"
+                  >
+                    <Wallet
+                      className="w-6 h-6 text-gray-400 group-hover:text-purple-500 transition-colors"
+                      strokeWidth={2}
+                    />
+                    <span className="text-xs text-gray-400 group-hover:text-white transition-colors font-medium">
+                      Retiros
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => changeStep(7, "forward")}
+                    className="flex flex-col items-center gap-2 py-4 rounded-xl border border-gray-800 hover:border-purple-600 transition-all group hover:scale-105"
+                  >
+                    <MessageCircle
+                      className="w-6 h-6 text-gray-400 group-hover:text-purple-500 transition-colors"
+                      strokeWidth={2}
+                    />
+                    <span className="text-xs text-gray-400 group-hover:text-white transition-colors font-medium">
                       Soporte
-                    </Button>
+                    </span>
+                  </button>
+                </div>
+
+                {!userCreationEnabled && (
+                  <div className="flex items-center gap-2 justify-center text-sm text-gray-400 bg-gray-900 p-4 rounded-xl border border-gray-800">
+                    <AlertCircle className="w-5 h-5" strokeWidth={2} />
+                    <span>Creación de usuarios temporalmente deshabilitada</span>
                   </div>
-                </CardContent>
-              </Card>
+                )}
+              </div>
             </div>
           </div>
         )}
 
+        {/* PASO 2 - Crear Usuario */}
         {step === 2 && (
           <div
-            className={`transition-all duration-[350ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
-              isStepAnimating
-                ? "opacity-100 translate-y-0 scale-100 blur-0 rotate-0"
-                : "opacity-0 translate-y-8 scale-90 blur-sm -rotate-1"
-            }`}
+            className="w-full max-w-md mx-auto"
+            style={{
+              animation: isStepAnimating ? "slideInFromRight 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
+            }}
           >
-            <div className="py-12 px-3">
-              <Card className="shadow-md backdrop-blur-md bg-card/90 border-transparent p-3 px-0">
-                <CardHeader className="space-y-3 pt-3 pb-0">
-                  <CardTitle className="text-3xl text-primary font-semibold py-0">Crear Usuario</CardTitle>
-                  <CardDescription className="text-muted-foreground">Completá tus datos para continuar</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6 pb-8">
-                  <form onSubmit={handleCreateUser} className="space-y-6">
-                    <div id="plataforma-wrapper" className="space-y-2 relative z-10 mb-4">
-                      <Label htmlFor="plataforma" className="text-base text-card-foreground font-semibold">
-                        Elegí tu plataforma favorita
-                      </Label>
-                      <Select
-                        value={plataforma}
-                        onValueChange={(value) => {
-                          setPlataforma(value)
-                          setPlataformaError("")
-                          setIsDropdownOpen(false)
-                        }}
-                        required
-                        onOpenChange={(open) => {
-                          setIsDropdownOpen(open)
-                        }}
-                      >
-                        <SelectTrigger
-                          id="plataforma"
-                          className="h-12 text-base bg-input border-border focus:border-primary focus:ring-primary/50 transition-all duration-200 text-foreground"
-                        >
-                          <SelectValue placeholder="Seleccioná una opción" />
-                        </SelectTrigger>
-                        <SelectContent className="z-[10000]">
-                          <SelectItem value="g">Ganamos</SelectItem>
-                          <SelectItem value="z">Zeus</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {plataformaError && (
-                        <small id="plataforma-help" className="text-sm text-destructive block">
-                          {plataformaError}
-                        </small>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="apodo" className="text-base text-card-foreground font-semibold">
-                        Apodo
-                      </Label>
-                      <Input
-                        id="apodo"
-                        type="text"
-                        value={apodo}
-                        onChange={handleApodoChange}
-                        onBlur={handleInputBlur}
-                        autoComplete="off"
-                        required
-                        placeholder="Tu apodo"
-                        pattern="[A-Za-zÀ-ÿ\s]+"
-                        className="h-12 text-base bg-input border-border focus:border-primary focus:ring-primary/50 transition-all duration-200 text-foreground placeholder:text-muted-foreground"
-                      />
-                      {apodoError && <p className="text-sm text-destructive mt-1">{apodoError}</p>}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="digitos" className="text-base text-card-foreground font-semibold">
-                        Últimos 4 dígitos del celular
-                      </Label>
-                      <Input
-                        id="digitos"
-                        type="text"
-                        inputMode="numeric"
-                        pattern="\d{4}"
-                        maxLength={4}
-                        value={digitos}
-                        onChange={(e) => setDigitos(e.target.value.replace(/\D/g, ""))}
-                        onBlur={handleInputBlur}
-                        autoComplete="off"
-                        required
-                        placeholder="1234"
-                        className="h-12 text-base bg-input border-border focus:border-primary focus:ring-primary/50 transition-all duration-200 text-foreground placeholder:text-muted-foreground"
-                      />
-                    </div>
-                    <div
-                      className={`flex flex-col items-center gap-3 pt-4 transition-all duration-200 ${
-                        isDropdownOpen ? "pointer-events-none opacity-50" : "pointer-events-auto opacity-100"
-                      }`}
-                    >
-                      <button
-                        type="submit"
-                        disabled={!isFormValid || isDropdownOpen}
-                        className={`btn-liquid-glass max-w-[320px] min-w-[240px] w-full h-12 px-5 font-semibold text-base rounded-lg transition-all duration-200 leading-tight truncate text-black ${
-                          !isFormValid || isDropdownOpen ? "opacity-50 cursor-not-allowed" : ""
-                        }`}
-                      >
-                        Crear Usuario
-                      </button>
-                      {!isFormValid && (
-                        <p className="text-xs text-muted-foreground text-center">
-                          Completá todos los campos correctamente para continuar
-                        </p>
-                      )}
-                      <Button
-                        type="button"
-                        onClick={() => changeStep(1)}
-                        variant="outline"
-                        disabled={isDropdownOpen}
-                        className="max-w-[320px] min-w-[240px] w-full h-12 text-base border-border hover:bg-muted hover:border-primary/50 transition-all duration-200 text-foreground font-bold"
-                      >
-                        <ArrowLeft className="w-4 h-4 mr-2" />
-                        Volver al inicio
-                      </Button>
-                    </div>
-                  </form>
-                </CardContent>
-              </Card>
+            <div className={`space-y-8 transition-all duration-500 ${isStepAnimating ? "opacity-100" : "opacity-0"}`}>
+              <div className="text-center space-y-2">
+                <Crown className="w-10 h-10 mx-auto text-purple-500 mb-4" strokeWidth={2} />
+                <h2 className="text-3xl font-black text-white">Crear Usuario</h2>
+                <p className="text-gray-400 text-sm">Completá tus datos para comenzar</p>
+              </div>
+
+              <form onSubmit={handleCreateUser} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="apodo" className="text-base text-gray-300 font-medium">
+                    Apodo
+                  </Label>
+                  <Input
+                    id="apodo"
+                    type="text"
+                    value={apodo}
+                    onChange={handleApodoChange}
+                    placeholder="Ingresá tu apodo"
+                    className="h-14 text-base bg-gray-900 border-gray-800 focus:border-purple-600 transition-colors text-white placeholder:text-gray-600 rounded-xl"
+                    required
+                  />
+                  {apodoError && <p className="text-red-500 text-xs mt-1">{apodoError}</p>}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="digitos" className="text-base text-gray-300 font-medium">
+                    Últimos 4 dígitos del celular
+                  </Label>
+                  <Input
+                    id="digitos"
+                    value={digitos}
+                    onChange={handleDigitosChange}
+                    placeholder="1234"
+                    className="h-14 bg-gray-900 border border-gray-800 text-white text-base focus:border-purple-600 transition-colors rounded-xl"
+                    maxLength={4}
+                  />
+                </div>
+
+                {/* Plataforma fija en Ganamos */}
+                <div className="space-y-2">
+                  <Label className="text-base text-gray-300 font-medium">Plataforma</Label>
+                  <div className="h-14 bg-gray-900 border border-gray-800 rounded-xl flex items-center px-4">
+                    <span className="text-base text-white">Ganamos</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={() => changeStep(3, "forward")}
+                    disabled={!isFormValid}
+                    className={`w-full h-14 font-semibold text-base rounded-xl transition-all ${
+                      isFormValid
+                        ? "btn-gradient-animated text-white hover:scale-105 hover:shadow-[0_0_40px_rgba(167,139,250,0.6)]"
+                        : "bg-gray-900 text-gray-600 cursor-not-allowed"
+                    }`}
+                  >
+                    Siguiente
+                  </button>
+
+                  <button
+                    onClick={() => changeStep(1, "back")}
+                    className="w-full h-14 text-base border border-gray-800 hover:border-purple-600 transition-all text-white font-medium rounded-xl hover:scale-105"
+                  >
+                    <ArrowLeft className="w-5 h-5 inline mr-2" strokeWidth={2} />
+                    Volver
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}
 
+        {/* PASO 3 - Usuario Creado SIN CARD */}
         {step === 3 && (
           <div
-            className={`transition-all duration-[350ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
-              isStepAnimating
-                ? "opacity-100 translate-y-0 scale-100 blur-0 rotate-0"
-                : "opacity-0 translate-y-8 scale-90 blur-sm -rotate-1"
+            className={`transition-all duration-500 ease-out ${
+              isStepAnimating ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-8 scale-90"
             }`}
+            style={{
+              animation: isStepAnimating ? "fadeInZoom 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
+            }}
           >
-            <div className="py-12 px-3">
-              <Card className="shadow-md backdrop-blur-md bg-card/90 border-transparent p-3 px-0">
-                <CardHeader className="space-y-3 pt-3 pb-0">
-                  <div className="flex items-center gap-2">
-                    <Crown
-                      className="w-6 h-6 text-primary"
-                      strokeWidth={2.5}
-                      style={{
-                        filter: "drop-shadow(0 0 8px rgba(255, 140, 0, 0.5))",
-                      }}
-                    />
-                    <CardTitle className="text-3xl text-primary font-semibold">¡Usuario Creado!</CardTitle>
+            <div className="space-y-10">
+              <div className="space-y-6 text-center">
+                <div className="flex justify-center">
+                  <div className="w-16 h-16 rounded-full bg-purple-600 flex items-center justify-center">
+                    <Check className="w-10 h-10 text-white" strokeWidth={2} />
                   </div>
-                  <CardDescription className="text-muted-foreground">Tu usuario fue creado con éxito</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6 pb-8">
-                  <div className="space-y-6">
-                    <div className="space-y-2">
-                      <Label className="text-base font-semibold text-card-foreground">Usuario</Label>
-                      <Input
-                        value={usuario}
-                        readOnly
-                        className="h-12 text-base font-mono bg-input border-border text-primary font-bold"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-base font-semibold text-card-foreground">Contraseña</Label>
-                      <Input
-                        value={password}
-                        readOnly
-                        className="h-12 text-base font-mono bg-input border-border text-primary font-bold"
-                      />
-                    </div>
+                </div>
+                <h2 className="text-4xl font-bold text-white">Usuario Creado</h2>
+                <p className="text-base text-gray-400">Tu usuario fue creado con éxito</p>
+              </div>
+
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <Label className="text-base font-medium text-gray-400">Usuario</Label>
+                  <div className="h-14 px-4 rounded-xl bg-gray-900 border border-gray-800 flex items-center">
+                    <span className="text-lg font-mono text-purple-500 font-semibold">{usuario}</span>
                   </div>
-                  <div className="flex flex-col gap-3">
-                    <div className="flex justify-center">
-                      <button
-                        onClick={() => changeStep(4)}
-                        className="btn-liquid-glass max-w-[320px] min-w-[240px] w-full h-12 px-5 font-semibold text-base rounded-lg transition-all duration-200 leading-tight truncate text-black"
-                      >
-                        Ir a pagar
-                      </button>
-                    </div>
-                    <div className="flex justify-center">
-                      <Button
-                        onClick={() => changeStep(2)}
-                        variant="outline"
-                        className="max-w-[320px] min-w-[240px] w-full h-12 text-base border-border hover:bg-muted hover:border-primary/50 transition-all duration-200 text-foreground font-bold"
-                      >
-                        <ArrowLeft className="w-4 h-4 mr-2" />
-                        Atrás
-                      </Button>
-                    </div>
+                </div>
+
+                <div className="space-y-3">
+                  <Label className="text-base font-medium text-gray-400">Contraseña</Label>
+                  <div className="h-14 px-4 rounded-xl bg-gray-900 border border-gray-800 flex items-center">
+                    <span className="text-lg font-mono text-purple-500 font-semibold">{password}</span>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-4">
+                <button
+                  onClick={() => changeStep(4, "forward")}
+                  className="w-full h-14 btn-gradient-animated text-white font-semibold text-base rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(167,139,250,0.6)]"
+                >
+                  Ir a pagar
+                </button>
+
+                <button
+                  onClick={() => changeStep(2, "back")}
+                  className="w-full h-14 text-base border border-gray-800 hover:border-purple-600 transition-all text-white font-medium rounded-xl hover:scale-105"
+                >
+                  <ArrowLeft className="w-5 h-5 inline mr-2" strokeWidth={2} />
+                  Atrás
+                </button>
+              </div>
             </div>
           </div>
         )}
 
+        {/* PASO 4 - Enviá tu carga */}
         {step === 4 && (
           <div
-            className={`transition-all duration-[350ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
-              isStepAnimating
-                ? "opacity-100 translate-y-0 scale-100 blur-0 rotate-0"
-                : "opacity-0 translate-y-8 scale-90 blur-sm -rotate-1"
-            }`}
+            className="w-full max-w-md mx-auto"
+            style={{
+              animation: isStepAnimating ? "slideInFromRight 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
+            }}
           >
-            <div className="py-12 px-3">
-              <Card className="border-transparent shadow-md backdrop-blur-md bg-card/90 p-3 px-0">
-                <CardHeader className="space-y-3 pt-3 pb-0">
-                  <CardTitle className="text-3xl text-primary font-semibold">Enviá tu carga</CardTitle>
-                  <CardDescription className="text-muted-foreground text-base">
-                    Monto mínimo: ${minAmountStr}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6 pb-8">
-                  <div className="space-3">
-                    <Label className="text-base font-semibold text-card-foreground">{paymentLabel}: </Label>
-                    <div className="relative">
-                      <Input
-                        value={alias}
-                        readOnly
-                        className="h-12 font-mono bg-input border-border text-center text-primary font-bold pr-16 text-base"
-                      />
-                      <Button
-                        onClick={() => copyToClipboard(alias)}
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-1 top-1/2 -translate-y-1/2 h-10 w-10 hover:bg-primary/20 transition-all duration-200"
-                      >
-                        {copiedAlias ? (
-                          <Check className="h-5 w-5 text-primary shrink-0" />
-                        ) : (
-                          <Copy className="h-5 w-5 text-muted-foreground" />
-                        )}
-                      </Button>
-                    </div>
+            <div className={`space-y-8 transition-all duration-500 ${isStepAnimating ? "opacity-100" : "opacity-0"}`}>
+              <div className="text-center space-y-2">
+                <Crown className="w-10 h-10 mx-auto text-purple-500 mb-4" strokeWidth={2} />
+                <h2 className="text-3xl font-black text-white">Enviá tu carga</h2>
+                <p className="text-gray-400 text-sm">Hacé la transferencia y confirmala</p>
+              </div>
+
+              <div className="space-y-6">
+                <div className="p-4 bg-gray-900 border border-gray-800 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-400">Carga mínima:</span>
+                    <span className="text-lg font-bold text-white">${formatCurrency(minAmount)}</span>
                   </div>
                   <div className="flex flex-col items-center gap-3 pt-4">
+                    <span className="text-base text-gray-400">Alias</span>
+                    <span className="text-2xl font-bold text-purple-400">
+                      {paymentData || alias || "No configurado"}
+                    </span>
                     <button
-                      id="btn-transfer-done"
-                      onClick={handleTransferConfirmation}
-                      disabled={transferButtonTimer > 0}
-                      className={`max-w-[320px] min-w-[240px] w-full h-12 px-5 font-semibold text-base rounded-lg transition-all duration-200 leading-tight truncate flex items-center justify-center gap-2 ${
-                        transferButtonTimer > 0
-                          ? "bg-gray-600 text-gray-400 cursor-not-allowed"
-                          : "btn-liquid-glass text-black"
-                      }`}
+                      onClick={handleCopyAlias}
+                      className="btn-gradient-animated px-6 py-2 text-white rounded-lg transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(167,139,250,0.5)] flex items-center gap-2"
                     >
-                      {transferButtonTimer > 0 ? (
+                      {copied ? (
                         <>
-                          <Hourglass className="w-5 h-5 shrink-0 animate-spin" />
-                          <span className="truncate">Esperando transferencia</span>
+                          <Check className="w-4 h-4" strokeWidth={2} />
+                          <span>Copiado</span>
                         </>
                       ) : (
-                        <span className="truncate">Ya envié el dinero</span>
+                        <>
+                          <Copy className="w-4 h-4" strokeWidth={2} />
+                          <span>Copiar</span>
+                        </>
                       )}
                     </button>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+
+                <button
+                  onClick={() => changeStep(5, "forward")}
+                  disabled={transferButtonTimer > 0}
+                  className={`w-full h-14 font-semibold text-base rounded-xl flex items-center justify-center gap-3 transition-all ${
+                    transferButtonTimer > 0
+                      ? "bg-gray-900 text-gray-500 cursor-not-allowed"
+                      : "btn-gradient-animated text-white hover:scale-105 hover:shadow-[0_0_40px_rgba(167,139,250,0.6)]"
+                  }`}
+                >
+                  {transferButtonTimer > 0 ? (
+                    <>
+                      <Hourglass className="w-5 h-5 animate-spin" strokeWidth={2} />
+                      <span>Esperando transferencia</span>
+                    </>
+                  ) : (
+                    <span>Ya envié el dinero</span>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         )}
 
+        {/* PASO 5 - Últimos detalles */}
         {step === 5 && (
           <div
-            className={`transition-all duration-[350ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
-              isStepAnimating
-                ? "opacity-100 translate-y-0 scale-100 blur-0 rotate-0"
-                : "opacity-0 translate-y-8 scale-90 blur-sm -rotate-1"
-            }`}
+            className="w-full max-w-md mx-auto"
+            style={{
+              animation: isStepAnimating ? "slideInFromRight 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
+            }}
           >
-            <div className="px-3 py-12">
-              <Card className="border-transparent shadow-md backdrop-blur-md bg-card/90 p-3 px-0 py-3">
-                <CardHeader className="space-y-3 pt-3 pb-0">
-                  <CardTitle className="text-3xl text-primary font-semibold">Último paso!</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6 pb-8 pt-0">
-                  <div className="space-3 py-0">
-                    <div className="space-y-2">
-                      <Label htmlFor="titular" className="text-base text-card-foreground font-semibold">
-                        Nombre del titular:
-                      </Label>
-                      <Input
-                        id="titular"
-                        type="text"
-                        value={titular}
-                        onChange={handleTitularChange}
-                        onBlur={handleInputBlur}
-                        placeholder="Ejemplo: Juan Pérez"
-                        pattern="[A-Za-zÀ-ÿ\s]+"
-                        required
-                        className="text-base bg-input border-border focus:border-primary focus:ring-primary/50 transition-all duration-200 text-foreground placeholder:text-muted-foreground h-12"
-                      />
-                      {titularError && <p className="text-sm text-destructive mt-1">{titularError}</p>}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="monto" className="text-base text-card-foreground font-semibold">
-                        Monto enviado:
-                      </Label>
-                      <Input
-                        id="monto"
-                        type="text"
-                        inputMode="numeric"
-                        value={monto}
-                        onChange={(e) => setMonto(e.target.value.replace(/\D/g, ""))}
-                        onBlur={handleInputBlur}
-                        placeholder="Ejemplo: 5000"
-                        required
-                        className="text-base bg-input border-border focus:border-primary focus:ring-primary/50 transition-all duration-200 text-foreground placeholder:text-muted-foreground h-12 py-0"
-                      />
-                    </div>
-                    <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20 flex-row py-3 my-5">
-                      <AlertCircle className="w-5 text-primary shrink-0 h-5 mb-0 border-0 mt-6" />
-                      <p className="text-sm leading-relaxed text-primary font-medium">
-                        Asegurate de ingresar los mismos datos de tu transferencia para evitar demoras en la
-                        acreditación.
-                      </p>
-                    </div>
+            <div className={`space-y-8 transition-all duration-500 ${isStepAnimating ? "opacity-100" : "opacity-0"}`}>
+              <div className="text-center space-y-2">
+                <Crown className="w-10 h-10 mx-auto text-purple-500 mb-4" strokeWidth={2} />
+                <h2 className="text-3xl font-bold text-white">Últimos detalles</h2>
+                <p className="text-gray-400 text-sm">Completá los datos de la transferencia</p>
+              </div>
+
+              <div className="p-4 bg-purple-950/20 border border-purple-800/30 rounded-xl">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" strokeWidth={2} />
+                  <p className="text-sm text-gray-300">
+                    <span className="font-semibold text-purple-300">Importante:</span> Asegurate de que el titular y el
+                    monto coincidan exactamente con los datos de tu transferencia para que tu carga se acredite más
+                    rápido.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="titular-step5" className="block text-base font-medium text-gray-300 mb-2">
+                      Titular de la cuenta
+                    </label>
+                    <input
+                      id="titular-step5"
+                      type="text"
+                      value={titular}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        if (/^[A-Za-zÀ-ÿ\s]*$/.test(value)) {
+                          setTitular(value)
+                          setTitularError("")
+                        }
+                      }}
+                      onBlur={() => {
+                        if (titular.trim() && !/^[A-Za-zÀ-ÿ\s]+$/.test(titular.trim())) {
+                          setTitularError("Solo se permiten letras")
+                        } else {
+                          setTitularError("")
+                        }
+                      }}
+                      placeholder="Nombre completo del titular"
+                      className="w-full h-14 px-4 bg-gray-900 border border-gray-800 rounded-xl text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-600 transition-colors"
+                    />
+                    {titularError && <p className="text-red-500 text-xs mt-1">{titularError}</p>}
                   </div>
 
-                  <div className="space-y-3">
-                    <p className="text-sm font-semibold text-card-foreground py-0 my-3">Enviar a soporte:</p>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 py-0">
-                        <CheckCircle className="w-4 h-4 text-primary" strokeWidth={2} />
-                        <span className="text-sm text-muted-foreground">Comprobante de pago</span>
-                      </div>
-                    </div>
+                  <div>
+                    <label htmlFor="monto-step5" className="block text-base font-medium text-gray-300 mb-2">
+                      Monto a depositado
+                    </label>
+                    <input
+                      id="monto-step5"
+                      type="text"
+                      value={montoInput} // Use montoInput for the typed value
+                      onChange={handleMontoChange}
+                      placeholder={`Mínimo $${formatCurrency(minAmount)}`}
+                      className="w-full h-14 px-4 bg-gray-900 border border-gray-800 rounded-xl text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-600 transition-colors"
+                    />
+                    {montoError && <p className="text-red-500 text-xs mt-1">{montoError}</p>}
                   </div>
+                </div>
 
-                  <div className="flex justify-center">
-                    <button
-                      id="btn-acreditar"
-                      onClick={openWhatsApp}
-                      disabled={!isSoporteButtonEnabled}
-                      className="btn-liquid-glass max-w-[320px] min-w-[240px] w-full h-12 px-5 font-semibold text-base rounded-lg transition-all duration-200 leading-tight truncate text-black flex items-center justify-center gap-2"
-                    >
-                      <MessageCircle className="w-5 h-5 shrink-0" />
-                      <span className="truncate">Acreditar mi carga</span>
-                    </button>
-                  </div>
+                <button
+                  onClick={handleWhatsAppSend}
+                  disabled={!isSoporteButtonEnabled}
+                  className={`w-full h-14 font-semibold text-base rounded-xl flex items-center justify-center gap-3 transition-all ${
+                    !isSoporteButtonEnabled
+                      ? "bg-gray-900 text-gray-600 cursor-not-allowed border border-gray-800"
+                      : "btn-gradient-animated text-white hover:scale-105 hover:shadow-[0_0_40px_rgba(167,139,250,0.6)]"
+                  }`}
+                >
+                  <MessageCircle className="w-5 h-5" strokeWidth={2} />
+                  <span>{!isSoporteButtonEnabled ? "Completar los campos" : "Acreditar mi carga"}</span>
+                </button>
 
-                  <div className="flex justify-center">
-                    <Button
-                      onClick={() => changeStep(6)}
-                      variant="outline"
-                      className="max-w-[320px] min-w-[240px] w-full h-12 text-base border-border hover:bg-muted hover:border-primary transition-all duration-200 font-normal text-foreground"
-                    >
-                      Ver preguntas frecuentes
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                <button
+                  onClick={() => changeStep(4, "back")}
+                  className="w-full h-14 text-base border border-gray-800 hover:border-purple-600 transition-all text-white font-medium rounded-xl hover:scale-105"
+                >
+                  Volver
+                </button>
+              </div>
             </div>
           </div>
         )}
 
+        {/* PASO 6 - Preguntas Frecuentes SIN CARD */}
         {step === 6 && (
           <div
-            className={`transition-all duration-[350ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
-              isStepAnimating
-                ? "opacity-100 translate-y-0 scale-100 blur-0 rotate-0"
-                : "opacity-0 translate-y-8 scale-90 blur-sm -rotate-1"
+            className={`transition-all duration-500 ease-out ${
+              isStepAnimating ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-8 scale-95"
             }`}
+            style={{
+              animation: isStepAnimating ? "fadeInZoom 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
+            }}
           >
-            <div className="py-12 px-3">
-              <Card className="border-transparent shadow-md backdrop-blur-md bg-card/90 p-3 px-0">
-                <CardHeader className="space-y-3 pt-3 pb-6">
-                  <CardTitle className="text-3xl text-primary font-semibold">Preguntas Frecuentes</CardTitle>
-                  <CardDescription className="text-muted-foreground">
-                    Encontrá respuestas a las dudas más comunes
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6 pb-8">
-                  <Accordion type="single" collapsible className="w-full">
-                    <AccordionItem value="item-1" className="border-border">
-                      <AccordionTrigger className="text-left text-card-foreground hover:text-primary transition-colors duration-200 font-semibold">
-                        ¿Cuánto tarda en acreditarse mi carga?
-                      </AccordionTrigger>
-                      <AccordionContent className="text-muted-foreground leading-relaxed">
-                        Las cargas se acreditan en un plazo de 5 a 30 minutos después de enviar el comprobante al
-                        soporte. En horarios pico puede demorar un poco más.
-                      </AccordionContent>
-                    </AccordionItem>
-                    <AccordionItem value="item-2" className="border-border">
-                      <AccordionTrigger className="text-left text-card-foreground hover:text-primary transition-colors duration-200 font-semibold">
-                        ¿Puedo cargar desde otra cuenta?
-                      </AccordionTrigger>
-                      <AccordionContent className="text-muted-foreground leading-relaxed">
-                        Sí, podés cargar desde cualquier cuenta bancaria o billetera virtual. Solo asegurate de enviar
-                        el comprobante con tu usuario correcto.
-                      </AccordionContent>
-                    </AccordionItem>
-                    <AccordionItem value="item-3" className="border-border">
-                      <AccordionTrigger className="text-left text-card-foreground hover:text-primary transition-colors duration-200 font-semibold">
-                        ¿Qué hago si me equivoqué de monto?
-                      </AccordionTrigger>
-                      <AccordionContent className="text-muted-foreground leading-relaxed">
-                        Contactá inmediatamente al soporte por WhatsApp explicando la situación. El equipo te ayudará a
-                        resolver el problema.
-                      </AccordionContent>
-                    </AccordionItem>
-                    <AccordionItem value="item-4" className="border-border">
-                      <AccordionTrigger className="text-left text-card-foreground hover:text-primary transition-colors duration-200 font-semibold">
-                        ¿Qué horario tiene el soporte?
-                      </AccordionTrigger>
-                      <AccordionContent className="text-muted-foreground leading-relaxed">
-                        El soporte está disponible de lunes a domingo de 9:00 a 23:00 hs. Fuera de ese horario, podés
-                        enviar tu mensaje y te responderán a la brevedad.
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                </CardContent>
-              </Card>
-            </div>
-            <div className="flex justify-center pt-6">
+            <div className="space-y-10">
+              <div className="space-y-3 text-center">
+                <h2 className="text-4xl font-bold text-white">Preguntas Frecuentes</h2>
+              </div>
+
+              <Accordion type="single" collapsible className="w-full space-y-3">
+                <AccordionItem
+                  value="item-1"
+                  className="border-0 bg-gray-900 rounded-xl px-5 py-1 border border-gray-800"
+                >
+                  <AccordionTrigger className="text-left text-white hover:text-purple-500 transition-colors font-medium text-base">
+                    ¿Cuánto tarda en acreditarse mi carga?
+                  </AccordionTrigger>
+                  <AccordionContent className="text-gray-400 leading-relaxed text-sm pt-2">
+                    Las cargas se acreditan en un plazo de 5 a 30 minutos.
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem
+                  value="item-2"
+                  className="border-0 bg-gray-900 rounded-xl px-5 py-1 border border-gray-800"
+                >
+                  <AccordionTrigger className="text-left text-white hover:text-purple-500 transition-colors font-medium text-base">
+                    ¿Puedo cargar desde otra cuenta?
+                  </AccordionTrigger>
+                  <AccordionContent className="text-gray-400 leading-relaxed text-sm pt-2">
+                    Sí, podés cargar desde cualquier cuenta.
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem
+                  value="item-3"
+                  className="border-0 bg-gray-900 rounded-xl px-5 py-1 border border-gray-800"
+                >
+                  <AccordionTrigger className="text-left text-white hover:text-purple-500 transition-colors font-medium text-base">
+                    ¿Qué hago si me equivoqué de monto?
+                  </AccordionTrigger>
+                  <AccordionContent className="text-gray-400 leading-relaxed text-sm pt-2">
+                    Contactá inmediatamente al soporte por WhatsApp.
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem
+                  value="item-4"
+                  className="border-0 bg-gray-900 rounded-xl px-5 py-1 border border-gray-800"
+                >
+                  <AccordionTrigger className="text-left text-white hover:text-purple-500 transition-colors font-medium text-base">
+                    ¿Qué horario tiene el soporte?
+                  </AccordionTrigger>
+                  <AccordionContent className="text-gray-400 leading-relaxed text-sm pt-2">
+                    El soporte está disponible de 9:00 a 23:00 hs.
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+
               <button
-                onClick={() => changeStep(5)}
-                className="btn-liquid-glass max-w-[320px] min-w-[240px] w-full h-12 px-5 font-semibold text-base rounded-lg transition-all duration-200 leading-tight truncate text-black flex items-center justify-center gap-2"
+                onClick={() => changeStep(5, "back")}
+                className="w-full h-14 bg-purple-600 hover:bg-purple-700 text-white font-semibold text-base rounded-xl transition-all flex items-center justify-center gap-3 hover:scale-105 hover:shadow-[0_0_30px_rgba(167,139,250,0.5)]"
               >
-                <ArrowLeft className="w-5 h-5 shrink-0" />
-                <span className="truncate">Volver</span>
+                <ArrowLeft className="w-5 h-5" strokeWidth={2} />
+                <span>Volver</span>
               </button>
             </div>
           </div>
         )}
 
+        {/* PASO 7 - Soporte SIN CARD */}
         {step === 7 && (
           <div
-            className={`transition-all duration-[350ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
-              isStepAnimating
-                ? "opacity-100 translate-y-0 scale-100 blur-0 rotate-0"
-                : "opacity-0 translate-y-8 scale-90 blur-sm -rotate-1"
+            className={`transition-all duration-500 ease-out ${
+              isStepAnimating ? "opacity-100 translate-x-0 scale-100" : "opacity-0 translate-x-8 scale-95"
             }`}
+            style={{
+              animation: isStepAnimating ? "slideInFromLeft 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
+            }}
           >
-            <div className="py-12 px-3">
-              <Card className="shadow-md backdrop-blur-md bg-card/90 border-transparent p-3 px-0">
-                <CardHeader className="space-y-3 pt-3 pb-0">
-                  <div className="flex justify-center mb-2">
-                    <MessageCircle className="w-10 h-10 text-primary" strokeWidth={2} />
+            <div className="space-y-10">
+              <div className="space-y-6 text-center">
+                <div className="flex justify-center">
+                  <div className="w-16 h-16 rounded-full bg-gray-900 border border-gray-800 flex items-center justify-center">
+                    <MessageCircle className="w-8 h-8 text-purple-500" strokeWidth={2} />
                   </div>
-                  <CardTitle className="text-3xl text-primary font-semibold text-center">
-                    Bienvenido a soporte
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6 pt-4 pb-8">
-                  <p className="text-center text-muted-foreground text-base leading-relaxed max-w-md mx-auto">
-                    Podés comunicarte con nuestro número de atención para reclamos y consultas. Te ayudamos a resolver
-                    cualquier inconveniente con tus fichas, accesos o promociones.
-                  </p>
+                </div>
+                <h2 className="text-4xl font-bold text-white">Soporte</h2>
+              </div>
 
-                  <div className="flex flex-col items-center gap-3 pt-2">
-                    <a
-                      href="https://wa.me/543416605903?text=Hola,%20me%20contacto%20desde%20la%20página%20REDvitto36%20por%20un%20reclamo%20o%20consulta%20de%20soporte.%20¿Me%20podrías%20ayudar?"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn-liquid-glass max-w-[320px] min-w-[240px] w-full h-12 px-5 font-semibold text-base rounded-lg transition-all duration-200 leading-tight truncate text-black flex items-center justify-center gap-2"
-                    >
-                      Contactar con soporte
-                    </a>
+              <p className="text-center text-gray-400 text-base leading-relaxed">
+                Comunicate con nuestro equipo para reclamos y consultas sobre fichas, accesos o promociones.
+              </p>
 
-                    <Button
-                      onClick={() => changeStep(1)}
-                      variant="outline"
-                      className="max-w-[320px] min-w-[240px] w-full h-12 text-base border-border hover:bg-muted hover:border-primary/50 transition-all duration-200 font-normal text-muted-foreground bg-transparent"
-                    >
-                      <ArrowLeft className="w-4 h-4 mr-2" />
-                      Volver al inicio
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="space-y-4">
+                <a
+                  href="https://wa.me/543416605903?text=Hola,%20me%20contacto%20desde%20TheCrown."
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full h-14 bg-purple-600 hover:bg-purple-700 text-white font-semibold text-base rounded-xl transition-all flex items-center justify-center gap-3 hover:scale-105 hover:shadow-[0_0_30px_rgba(167,139,250,0.5)]"
+                >
+                  <MessageCircle className="w-5 h-5" strokeWidth={2} />
+                  <span>Contactar</span>
+                </a>
+
+                <button
+                  onClick={() => changeStep(1, "back")}
+                  className="w-full h-14 text-base border border-gray-800 hover:border-purple-600 transition-all text-white font-medium rounded-xl hover:scale-105"
+                >
+                  <ArrowLeft className="w-5 h-5 inline mr-2" strokeWidth={2} />
+                  Volver al inicio
+                </button>
+              </div>
             </div>
           </div>
         )}
       </div>
 
-      <footer className="fixed bottom-0 left-0 right-0 z-20 bg-gradient-to-r from-[#0a0a0a] via-[#1a1a1a] to-[#0a0a0a] border-t border-[#FF8C00]/20 backdrop-blur-md">
+      {/* Footer minimalista */}
+      <footer className="fixed bottom-0 left-0 right-0 z-20 bg-black/50 backdrop-blur-sm border-t border-gray-900">
         <div className="container mx-auto px-4 py-3">
-          <div className="flex flex-nowrap items-center justify-center gap-x-3 sm:gap-x-6 text-[10px] sm:text-xs md:text-sm">
-            <div className="flex items-center gap-1.5 sm:gap-2 text-white/80 whitespace-nowrap">
-              <Shield className="w-3 h-3 sm:w-4 sm:h-4 text-[#FF8C00] shrink-0" strokeWidth={2.5} />
-              <span className="font-medium">Pagos seguros</span>
-            </div>
-            <span className="text-[#FF8C00]/40 hidden xs:inline">•</span>
-            <div className="flex items-center gap-1.5 sm:gap-2 text-white/80 whitespace-nowrap">
-              <Users className="w-3 h-3 sm:w-4 sm:h-4 text-[#FF8C00] shrink-0" strokeWidth={2.5} />
-              <span className="font-medium">+10K usuarios</span>
-            </div>
-            <span className="text-[#FF8C00]/40 hidden xs:inline">•</span>
-            <div className="flex items-center gap-1.5 sm:gap-2 text-white/80 whitespace-nowrap">
-              <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4 text-[#FF8C00] shrink-0" strokeWidth={2.5} />
-              <span className="font-medium">+18 Juega responsablemente</span>
-            </div>
+          <div className="flex items-center justify-center gap-x-6 text-xs text-gray-500 overflow-x-auto">
+            <span className="flex items-center gap-1.5 whitespace-nowrap">
+              <Shield className="w-3.5 h-3.5" />
+              Pagos Seguros
+            </span>
+            <span className="flex items-center gap-1.5 whitespace-nowrap">
+              <Users className="w-3.5 h-3.5" />
+              10K+ Usuarios
+            </span>
+            <span className="flex items-center gap-1.5 whitespace-nowrap">
+              <AlertCircle className="w-3.5 h-3.5" />
+              +18 Juego responsable
+            </span>
           </div>
         </div>
       </footer>

@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "El de la Suerte",
-  description: "Creá tu usuario y empezá a jugar",
+  title: "TheCrown | Premium Payment Platform",
+  description: "Secure and elegant payment processing for casino platforms - Fast, reliable, and trusted by thousands",
   generator: "v0.app",
 }
 

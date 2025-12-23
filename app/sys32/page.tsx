@@ -1,24 +1,29 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Lock, LogOut, Save, Sparkles, Phone, CheckCircle2, AlertCircle, Clock, DollarSign, Users } from 'lucide-react'
+import {
+  Lock,
+  LogOut,
+  Save,
+  Phone,
+  AlertCircle,
+  Clock,
+  DollarSign,
+  Users,
+  Shield,
+  Crown,
+  MessageCircle,
+} from "lucide-react"
 
 const SUPPORT_CONTACTS = [
-  { name: "Lucia — P", phone: "5493417528062" },
-  { name: "Carolina — B", phone: "5493415481923" },
   { name: "Sofía — B", phone: "5493416198041" },
   { name: "Milu — B", phone: "5491160340101" },
   { name: "Sara — P", phone: "5491160340179" },
-  { name: "Joana — B", phone: "5493412796515" },
-  { name: "Mica — P", phone: "5493416605903" },
   { name: "Otro / Personalizado", phone: "" },
 ]
 
@@ -45,8 +50,11 @@ export default function AdminPage() {
   const [paymentType, setPaymentType] = useState<"alias" | "cbu">("alias")
   const [cbuError, setCbuError] = useState("")
   const [selectedContactIndex, setSelectedContactIndex] = useState<string>("0")
+  const [phone, setPhone] = useState("")
   const [supportPhone, setSupportPhone] = useState("")
+  const [selectedSupportContactIndex, setSelectedSupportContactIndex] = useState<string>("3")
   const [isPhoneEditable, setIsPhoneEditable] = useState(false)
+  const [isSupportPhoneEditable, setIsSupportPhoneEditable] = useState(false)
   const [activeAlias, setActiveAlias] = useState("")
   const [activePhone, setActivePhone] = useState("")
   const [activeContactName, setActiveContactName] = useState("")
@@ -58,29 +66,28 @@ export default function AdminPage() {
   const [activeTransferTimer, setActiveTransferTimer] = useState(30)
   const [activeMinAmount, setActiveMinAmount] = useState(2000)
   const [adminPin, setAdminPin] = useState("") // Store PIN for config saves
+  const [activeSupportPhone, setActiveSupportPhone] = useState("") // Declare the variable
 
   useEffect(() => {
-    // No auto-check needed, user must enter PIN
-  }, [])
-
-  const loadConfig = async () => {
-    try {
+    const loadSettings = async () => {
       const response = await fetch("/api/admin/settings", {
         credentials: "include",
         cache: "no-store",
       })
-      
+
       if (response.ok) {
         const data = await response.json()
         if (data.success && data.settings) {
           const settings = data.settings
-          
+
           setActiveAlias(settings.alias || "")
           setActivePhone(settings.phone || "")
           setActivePaymentType(settings.paymentType || "alias")
           setActiveUserCreationEnabled(settings.createUserEnabled ?? true)
           setActiveTransferTimer(settings.timerSeconds ?? 30)
           setActiveMinAmount(settings.minAmount ?? 2000)
+          setPhone(settings.phone || "")
+          setSupportPhone(settings.support_phone || "")
 
           setAlias(settings.alias || "")
           setPaymentType(settings.paymentType || "alias")
@@ -92,36 +99,61 @@ export default function AdminPage() {
             const idx = SUPPORT_CONTACTS.findIndex((c) => c.phone === settings.phone)
             if (idx >= 0) {
               setSelectedContactIndex(String(idx))
-              setSupportPhone(SUPPORT_CONTACTS[idx].phone)
               setIsPhoneEditable(SUPPORT_CONTACTS[idx].name === "Otro / Personalizado")
-              setActiveContactName(SUPPORT_CONTACTS[idx].name)
             } else {
-              setSelectedContactIndex(String(SUPPORT_CONTACTS.length - 1))
-              setSupportPhone(settings.phone)
+              setSelectedContactIndex("0")
               setIsPhoneEditable(true)
-              setActiveContactName("Otro / Personalizado")
             }
           } else {
             setSelectedContactIndex("0")
-            setSupportPhone(SUPPORT_CONTACTS[0]?.phone || "")
             setIsPhoneEditable(false)
-            setActiveContactName(SUPPORT_CONTACTS[0]?.name || "")
+          }
+
+          if (settings.support_phone) {
+            const idx = SUPPORT_CONTACTS.findIndex((c) => c.phone === settings.support_phone)
+            if (idx >= 0) {
+              setSelectedSupportContactIndex(String(idx))
+              setIsSupportPhoneEditable(SUPPORT_CONTACTS[idx].name === "Otro / Personalizado")
+            } else {
+              setSelectedSupportContactIndex(String(SUPPORT_CONTACTS.length - 1))
+              setIsSupportPhoneEditable(true)
+            }
+          } else {
+            setSelectedSupportContactIndex(String(SUPPORT_CONTACTS.length - 1))
+            setIsSupportPhoneEditable(false)
           }
         }
       }
-    } catch (error) {
-      console.error("Error loading config:", error)
     }
-  }
+
+    loadSettings()
+  }, [])
 
   const handleContactChange = (value: string) => {
     setSelectedContactIndex(value)
-    const idx = Number(value)
-    const contact = SUPPORT_CONTACTS[idx]
+    const idx = Number.parseInt(value)
+    if (idx >= 0 && idx < SUPPORT_CONTACTS.length) {
+      const contact = SUPPORT_CONTACTS[idx]
+      if (contact.phone) {
+        setPhone(contact.phone)
+        setIsPhoneEditable(false)
+      } else {
+        setIsPhoneEditable(true)
+      }
+    }
+  }
 
-    if (contact) {
-      setSupportPhone(contact.phone)
-      setIsPhoneEditable(contact.name === "Otro / Personalizado")
+  const handleSupportContactChange = (value: string) => {
+    setSelectedSupportContactIndex(value)
+    const idx = Number.parseInt(value)
+    if (idx >= 0 && idx < SUPPORT_CONTACTS.length) {
+      const contact = SUPPORT_CONTACTS[idx]
+      if (contact.phone) {
+        setSupportPhone(contact.phone)
+        setIsSupportPhoneEditable(false)
+      } else {
+        setIsSupportPhoneEditable(true)
+      }
     }
   }
 
@@ -134,7 +166,7 @@ export default function AdminPage() {
     setIsLoading(true)
     try {
       const testPIN = pinInput.trim()
-      
+
       const response = await fetch("/api/admin/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -205,7 +237,8 @@ export default function AdminPage() {
   }
 
   const handleSave = async () => {
-    const phoneValue = sanitizePhone(supportPhone.trim())
+    const phoneValue = sanitizePhone(phone.trim())
+    const supportPhoneValue = sanitizePhone(supportPhone.trim())
 
     if (!phoneValue || phoneValue.length < 8) {
       alert("Ingresá un teléfono válido (mínimo 8 dígitos)")
@@ -214,6 +247,16 @@ export default function AdminPage() {
 
     if (phoneValue.length > 15) {
       alert("El teléfono no puede tener más de 15 dígitos")
+      return
+    }
+
+    if (!supportPhoneValue || supportPhoneValue.length < 8) {
+      alert("Ingresá un teléfono de soporte válido (mínimo 8 dígitos)")
+      return
+    }
+
+    if (supportPhoneValue.length > 15) {
+      alert("El teléfono de soporte no puede tener más de 15 dígitos")
       return
     }
 
@@ -266,6 +309,7 @@ export default function AdminPage() {
           createUserEnabled: userCreationEnabled,
           timerSeconds: transferTimerNum,
           minAmount: minAmountNum,
+          support_phone: supportPhoneValue,
           pin: adminPin,
         }),
       })
@@ -283,13 +327,12 @@ export default function AdminPage() {
         setActiveUserCreationEnabled(userCreationEnabled)
         setActiveTransferTimer(transferTimerNum)
         setActiveMinAmount(minAmountNum)
-        
-        const idx = Number(selectedContactIndex)
-        if (idx >= 0 && idx < SUPPORT_CONTACTS.length) {
-          setActiveContactName(SUPPORT_CONTACTS[idx].name)
-        }
+        setActiveContactName(SUPPORT_CONTACTS[Number.parseInt(selectedContactIndex)].name)
+        setActiveSupportPhone(SUPPORT_CONTACTS[Number.parseInt(selectedSupportContactIndex)].phone) // Set activeSupportPhone
 
-        alert("✅ Configuración guardada exitosamente en Supabase.\nLos cambios son permanentes y se reflejan en todos los dispositivos.")
+        alert(
+          "✅ Configuración guardada exitosamente en Supabase.\nLos cambios son permanentes y se reflejan en todos los dispositivos.",
+        )
       }
     } catch (error) {
       console.error("Save error:", error)
@@ -297,38 +340,99 @@ export default function AdminPage() {
     }
   }
 
+  const loadConfig = async () => {
+    try {
+      const response = await fetch("/api/admin/settings", {
+        credentials: "include",
+        cache: "no-store",
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.settings) {
+          const settings = data.settings
+
+          setActiveAlias(settings.alias || "")
+          setActivePhone(settings.phone || "")
+          setActivePaymentType(settings.paymentType || "alias")
+          setActiveUserCreationEnabled(settings.createUserEnabled ?? true)
+          setActiveTransferTimer(settings.timerSeconds ?? 30)
+          setActiveMinAmount(settings.minAmount ?? 2000)
+          setPhone(settings.phone || "")
+          setSupportPhone(settings.support_phone || "")
+
+          setAlias(settings.alias || "")
+          setPaymentType(settings.paymentType || "alias")
+          setUserCreationEnabled(settings.createUserEnabled ?? true)
+          setTransferTimer(String(settings.timerSeconds ?? 30))
+          setMinAmount(String(settings.minAmount ?? 2000))
+
+          if (settings.phone) {
+            const idx = SUPPORT_CONTACTS.findIndex((c) => c.phone === settings.phone)
+            if (idx >= 0) {
+              setSelectedContactIndex(String(idx))
+              setIsPhoneEditable(SUPPORT_CONTACTS[idx].name === "Otro / Personalizado")
+            } else {
+              setSelectedContactIndex("0")
+              setIsPhoneEditable(true)
+            }
+          } else {
+            setSelectedContactIndex("0")
+            setIsPhoneEditable(false)
+          }
+
+          if (settings.support_phone) {
+            const idx = SUPPORT_CONTACTS.findIndex((c) => c.phone === settings.support_phone)
+            if (idx >= 0) {
+              setSelectedSupportContactIndex(String(idx))
+              setIsSupportPhoneEditable(SUPPORT_CONTACTS[idx].name === "Otro / Personalizado")
+            } else {
+              setSelectedSupportContactIndex(String(SUPPORT_CONTACTS.length - 1))
+              setIsSupportPhoneEditable(true)
+            }
+          } else {
+            setSelectedSupportContactIndex(String(SUPPORT_CONTACTS.length - 1))
+            setIsSupportPhoneEditable(false)
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error loading config:", error)
+    }
+  }
+
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      <div
-        className="fixed inset-0 bg-gradient-to-br from-[#0d0a19] via-[#1a0f2e] to-[#2d1b4e] animate-[gradientShift_15s_ease_infinite]"
-        style={{
-          backgroundSize: "200% 200%",
-        }}
-      />
+    <div className="min-h-screen relative overflow-hidden bg-black">
+      {/* Partículas flotantes en el fondo */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="particle particle-1" />
+        <div className="particle particle-2" />
+        <div className="particle particle-3" />
+        <div className="particle particle-4" />
+      </div>
 
-      <div className="fixed top-20 left-10 w-64 h-64 bg-purple-600/10 rounded-full blur-3xl animate-[float_8s_ease-in-out_infinite]" />
-      <div className="fixed bottom-20 right-10 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl animate-[float_10s_ease-in-out_infinite_2s]" />
-
-      <div className="relative z-10 p-4 md:p-8">
+      {/* Padding aumentado para móvil */}
+      <div className="relative z-10 p-4 md:p-6 pt-12">
         <div className="mx-auto max-w-2xl">
           {!isAuthenticated ? (
-            <Card className="border border-purple-500/30 shadow-2xl backdrop-blur-md bg-gradient-to-br from-purple-950/90 to-purple-900/85">
-              <CardHeader className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Lock className="w-6 h-6 text-amber-400" />
-                  <CardTitle className="text-3xl bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-300 bg-clip-text text-transparent font-semibold">
-                    Acceso Administrador
-                  </CardTitle>
+            // Card de login con fondo negro, borde morado y efectos neon
+            <div className="bg-black/90 backdrop-blur-xl rounded-2xl border border-purple-600/30 p-6 shadow-[0_0_50px_rgba(124,58,237,0.3)] animate-fadeIn">
+              <div className="space-y-4">
+                {/* Ícono con efecto neon pulse */}
+                <div className="flex items-center gap-3 justify-center">
+                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-600 to-purple-800 flex items-center justify-center neon-glow animate-pulse">
+                    <Crown className="w-7 h-7 text-white" strokeWidth={2.5} />
+                  </div>
+                  <h1 className="text-4xl font-black text-white neon-text">TheCrown</h1>
                 </div>
-                <CardDescription className="text-purple-200/80">
-                  Ingresá el PIN para acceder al panel de configuración
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6 pb-8">
-                <div className="space-y-2">
-                  <Label htmlFor="admin-pin" className="text-base text-purple-100/90 font-semibold">
-                    PIN de administrador
+
+                <p className="text-base text-gray-300 text-center font-medium">Panel de Administración</p>
+
+                <div className="space-y-3">
+                  <Label htmlFor="admin-pin" className="text-base text-white font-bold">
+                    PIN de Acceso
                   </Label>
+                  {/* Input con estilo negro/morado */}
                   <Input
                     id="admin-pin"
                     type="password"
@@ -337,61 +441,62 @@ export default function AdminPage() {
                     onKeyDown={(e) => e.key === "Enter" && !isLoading && handleLogin()}
                     placeholder="Ingresá el PIN"
                     disabled={isLoading}
-                    className="h-12 text-base bg-purple-950/50 border-purple-500/30 focus:border-amber-400 focus:ring-amber-400/50 transition-all duration-200 text-white placeholder:text-purple-300/50"
+                    className="h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white placeholder:text-gray-500 rounded-xl hover:border-purple-500/60"
                   />
                 </div>
-                <div className="flex justify-center">
-                  <Button
-                    onClick={handleLogin}
-                    disabled={isLoading}
-                    className="max-w-[320px] w-full h-12 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-500 hover:from-amber-600 hover:via-yellow-600 hover:to-amber-600 text-black font-semibold text-base shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50"
-                  >
-                    {isLoading ? "Verificando..." : "Entrar"}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+
+                {/* Botón con gradiente animado */}
+                <button
+                  onClick={handleLogin}
+                  disabled={isLoading}
+                  className="w-full h-14 btn-gradient-animated text-white font-bold text-base rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <Lock className="w-5 h-5" strokeWidth={2.5} />
+                  {isLoading ? "Verificando..." : "Entrar"}
+                </button>
+              </div>
+            </div>
           ) : (
-            <div className="space-y-6">
-              <Card className="border border-purple-500/30 shadow-2xl backdrop-blur-md bg-gradient-to-br from-purple-950/90 to-purple-900/85">
-                <CardHeader className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-6 h-6 text-amber-400" />
-                    <CardTitle className="text-3xl bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-300 bg-clip-text text-transparent font-semibold">
-                      Configuración
-                    </CardTitle>
+            <div className="space-y-4 animate-slideInUp">
+              {/* Card principal con fondo negro y bordes morados */}
+              <div className="bg-black/90 backdrop-blur-xl rounded-2xl border border-purple-600/30 p-6 shadow-[0_0_50px_rgba(124,58,237,0.3)] space-y-4">
+                {/* Header con ícono neon */}
+                <div className="flex items-center gap-3 justify-center pb-3 border-b border-purple-600/20">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-purple-800 flex items-center justify-center neon-glow">
+                    <Shield className="w-6 h-6 text-white" strokeWidth={2.5} />
                   </div>
-                  <CardDescription className="text-purple-200/80">Modificá los parámetros del sistema</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6 pb-8">
-                  <div className="space-y-3 p-4 rounded-lg bg-purple-900/30 border border-purple-500/20">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Users className="w-5 h-5 text-amber-400" />
-                      <h3 className="text-lg font-semibold text-amber-300">Control de acceso</h3>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="user-creation-toggle" className="text-base text-purple-100/90 font-medium">
+                  <h1 className="text-3xl font-black text-white neon-text">Configuración</h1>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Control de acceso */}
+                  {/* Sección con fondo sutil y borde morado */}
+                  <div className="space-y-3 p-4 rounded-xl border border-purple-600/20 bg-purple-950/10">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                      <Users className="w-5 h-5 text-purple-400" strokeWidth={2.5} />
+                      Control de acceso
+                    </h3>
+                    <div className="flex items-center justify-between p-4 bg-black/40 rounded-lg border border-purple-600/10">
+                      <Label htmlFor="user-creation-toggle" className="text-base text-white font-medium">
                         Permitir creación de usuarios
                       </Label>
                       <Switch
                         id="user-creation-toggle"
                         checked={userCreationEnabled}
                         onCheckedChange={setUserCreationEnabled}
-                        className="data-[state=checked]:bg-amber-500"
+                        className="data-[state=checked]:bg-purple-600"
                       />
                     </div>
-                    <p className="text-xs text-purple-300/70">
-                      Cuando está desactivado, los usuarios no podrán crear nuevas cuentas
-                    </p>
                   </div>
 
-                  <div className="space-y-3 p-4 rounded-lg bg-purple-900/30 border border-purple-500/20">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Clock className="w-5 h-5 text-amber-400" />
-                      <h3 className="text-lg font-semibold text-amber-300">Temporizador</h3>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="transfer-timer" className="text-base text-purple-100/90 font-medium">
+                  {/* Temporizador */}
+                  <div className="space-y-3 p-4 rounded-xl border border-purple-600/20 bg-purple-950/10">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-purple-400" strokeWidth={2.5} />
+                      Temporizador
+                    </h3>
+                    <div className="space-y-3">
+                      <Label htmlFor="transfer-timer" className="text-base text-white font-medium">
                         Tiempo de espera (segundos)
                       </Label>
                       <Input
@@ -404,21 +509,22 @@ export default function AdminPage() {
                           setTransferTimer(value)
                         }}
                         placeholder="30"
-                        className="h-12 text-base bg-purple-950/50 border-purple-500/30 focus:border-amber-400 focus:ring-amber-400/50 transition-all duration-200 text-white placeholder:text-purple-300/50"
+                        className="h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white placeholder:text-gray-500 rounded-xl"
                       />
-                      <p className="text-xs text-purple-300/70">
+                      <p className="text-sm text-gray-400 font-medium">
                         Tiempo de espera en la sección "Esperando transferencia" (0-300 segundos)
                       </p>
                     </div>
                   </div>
 
-                  <div className="space-y-3 p-4 rounded-lg bg-purple-900/30 border border-purple-500/20">
-                    <div className="flex items-center gap-2 mb-2">
-                      <DollarSign className="w-5 h-5 text-amber-400" />
-                      <h3 className="text-lg font-semibold text-amber-300">Monto mínimo</h3>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="min-amount" className="text-base text-purple-100/90 font-medium">
+                  {/* Monto mínimo */}
+                  <div className="space-y-3 p-4 rounded-xl border border-purple-600/20 bg-purple-950/10">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                      <DollarSign className="w-5 h-5 text-purple-400" strokeWidth={2.5} />
+                      Monto mínimo
+                    </h3>
+                    <div className="space-y-3">
+                      <Label htmlFor="min-amount" className="text-base text-white font-medium">
                         Monto mínimo de carga ($)
                       </Label>
                       <Input
@@ -431,66 +537,66 @@ export default function AdminPage() {
                           setMinAmount(value)
                         }}
                         placeholder="0"
-                        className="h-12 text-base bg-purple-950/50 border-purple-500/30 focus:border-amber-400 focus:ring-amber-400/50 transition-all duration-200 text-white placeholder:text-purple-300/50"
+                        className="h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white placeholder:text-gray-500 rounded-xl"
                       />
-                      <p className="text-xs text-purple-300/70">
+                      <p className="text-sm text-gray-400 font-medium">
                         Monto mínimo requerido para realizar una carga
                       </p>
                     </div>
                   </div>
 
-                  <div className="space-y-3">
-                    <Label className="text-base text-purple-100/90 font-semibold">Tipo de pago</Label>
-                    <div className="flex items-center gap-2">
-                      <div className="flex gap-4">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="payment-type"
-                            value="alias"
-                            checked={paymentType === "alias"}
-                            onChange={(e) => {
-                              setPaymentType(e.target.value as "alias" | "cbu")
-                              setCbuError("")
-                              setAlias("")
-                            }}
-                            className="w-4 h-4 text-amber-400 border-purple-500/30 focus:ring-amber-400/50"
-                          />
-                          <span className="text-purple-100/90">Alias</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="payment-type"
-                            value="cbu"
-                            checked={paymentType === "cbu"}
-                            onChange={(e) => {
-                              setPaymentType(e.target.value as "alias" | "cbu")
-                              setCbuError("")
-                              setAlias("")
-                            }}
-                            className="w-4 h-4 text-amber-400 border-purple-500/30 focus:ring-amber-400/50"
-                          />
-                          <span className="text-purple-100/90">CBU</span>
-                        </label>
-                      </div>
+                  {/* Tipo de pago */}
+                  <div className="space-y-3 p-4 rounded-xl border border-purple-600/20 bg-purple-950/10">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                      <Phone className="w-5 h-5 text-purple-400" strokeWidth={2.5} />
+                      Tipo de pago
+                    </h3>
+                    <div className="flex items-center gap-6">
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="payment-type"
+                          value="alias"
+                          checked={paymentType === "alias"}
+                          onChange={(e) => {
+                            setPaymentType(e.target.value as "alias" | "cbu")
+                            setCbuError("")
+                            setAlias("")
+                          }}
+                          className="w-6 h-6 text-purple-600 accent-purple-600"
+                        />
+                        <span className="text-base text-white font-medium">Alias</span>
+                      </label>
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="payment-type"
+                          value="cbu"
+                          checked={paymentType === "cbu"}
+                          onChange={(e) => {
+                            setPaymentType(e.target.value as "alias" | "cbu")
+                            setCbuError("")
+                            setAlias("")
+                          }}
+                          className="w-6 h-6 text-purple-600 accent-purple-600"
+                        />
+                        <span className="text-base text-white font-medium">CBU</span>
+                      </label>
                       {paymentType === "cbu" && (
                         <span
                           className={`text-sm font-medium ${
                             alias.length === 22
                               ? "text-green-400"
                               : alias.length > 0
-                                ? "text-amber-400"
-                                : "text-purple-300/50"
+                                ? "text-yellow-400"
+                                : "text-gray-500"
                           }`}
                         >
                           {alias.length}/22
                         </span>
                       )}
                     </div>
-                  </div>
 
-                  <div className="space-y-2">
                     <Input
                       id="cfg-alias"
                       type="text"
@@ -498,38 +604,46 @@ export default function AdminPage() {
                       value={alias}
                       onChange={handleAliasChange}
                       placeholder={paymentType === "alias" ? "Ejemplo: DLHogar.mp" : "Ejemplo: 0000003100010000000000"}
-                      className={`h-12 text-base bg-purple-950/50 border-purple-500/30 focus:border-amber-400 focus:ring-amber-400/50 transition-all duration-200 text-white placeholder:text-purple-300/50 ${
-                        cbuError ? "border-red-500/50 focus:border-red-500 focus:ring-red-500/50" : ""
+                      className={`h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white placeholder:text-gray-500 rounded-xl ${
+                        cbuError ? "border-red-400" : ""
                       }`}
                     />
                     {cbuError && (
-                      <div className="flex items-center gap-2 text-red-400 text-sm">
-                        <AlertCircle className="w-4 h-4 shrink-0" />
+                      <div className="flex items-center gap-3 text-red-400 text-sm font-medium">
+                        <AlertCircle className="w-5 h-5 shrink-0" strokeWidth={2.5} />
                         <span>{cbuError}</span>
                       </div>
                     )}
                   </div>
 
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Phone className="w-5 h-5 text-amber-400" />
-                      <h3 className="text-lg font-semibold text-amber-300">Contacto de soporte</h3>
-                    </div>
+                  {/* Contacto de Atención */}
+                  <div className="space-y-3 p-4 rounded-xl border border-purple-600/20 bg-purple-950/10">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                      <Phone className="w-5 h-5 text-purple-400" strokeWidth={2.5} />
+                      Contacto de atención
+                    </h3>
+                    <p className="text-sm text-gray-400">
+                      Este número se usa para enviar comprobantes de transferencia
+                    </p>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="cfg-support-select" className="text-base text-purple-100/90 font-semibold">
+                    <div className="space-y-3">
+                      <Label htmlFor="cfg-phone-select" className="text-base text-white font-medium">
                         Seleccionar contacto
                       </Label>
                       <Select value={selectedContactIndex} onValueChange={handleContactChange}>
                         <SelectTrigger
-                          id="cfg-support-select"
-                          className="h-12 text-base bg-purple-950/50 border-purple-500/30 focus:border-amber-400 focus:ring-amber-400/50 transition-all duration-200 text-white"
+                          id="cfg-phone-select"
+                          className="h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white rounded-xl"
                         >
                           <SelectValue placeholder="Seleccioná un contacto…" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="bg-black border-purple-600/40 rounded-xl">
                           {SUPPORT_CONTACTS.map((contact, idx) => (
-                            <SelectItem key={idx} value={String(idx)}>
+                            <SelectItem
+                              key={idx}
+                              value={String(idx)}
+                              className="text-base font-medium text-white focus:bg-purple-950/50"
+                            >
                               {contact.name}
                             </SelectItem>
                           ))}
@@ -537,97 +651,137 @@ export default function AdminPage() {
                       </Select>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="cfg-phone-display" className="text-base text-purple-100/90 font-semibold">
-                        Teléfono seleccionado
+                    <div className="space-y-3">
+                      <Label htmlFor="cfg-phone-display" className="text-base text-white font-medium">
+                        Teléfono de atención
                       </Label>
                       <Input
                         id="cfg-phone-display"
                         type="text"
                         inputMode="numeric"
-                        value={supportPhone}
-                        onChange={(e) => setSupportPhone(sanitizePhone(e.target.value))}
+                        value={phone}
+                        onChange={(e) => setPhone(sanitizePhone(e.target.value))}
                         readOnly={!isPhoneEditable}
                         placeholder="Número de teléfono"
-                        className="h-12 text-base bg-purple-950/50 border-purple-500/30 focus:border-amber-400 focus:ring-amber-400/50 transition-all duration-200 text-white placeholder:text-purple-300/50"
+                        className="h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white placeholder:text-gray-500 rounded-xl"
                       />
                     </div>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row gap-3 pt-4">
-                    <Button
-                      id="btn-save-cfg"
+                  {/* Contacto de Soporte */}
+                  <div className="space-y-3 p-4 rounded-xl border border-purple-600/20 bg-purple-950/10">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                      <MessageCircle className="w-5 h-5 text-purple-400" strokeWidth={2.5} />
+                      Contacto de soporte
+                    </h3>
+                    <p className="text-sm text-gray-400">Este número se usa para consultas y reclamos de usuarios</p>
+
+                    <div className="space-y-3">
+                      <Label htmlFor="cfg-support-select" className="text-base text-white font-medium">
+                        Seleccionar contacto
+                      </Label>
+                      <Select value={selectedSupportContactIndex} onValueChange={handleSupportContactChange}>
+                        <SelectTrigger
+                          id="cfg-support-select"
+                          className="h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white rounded-xl"
+                        >
+                          <SelectValue placeholder="Seleccioná un contacto…" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-black border-purple-600/40 rounded-xl">
+                          {SUPPORT_CONTACTS.map((contact, idx) => (
+                            <SelectItem
+                              key={idx}
+                              value={String(idx)}
+                              className="text-base font-medium text-white focus:bg-purple-950/50"
+                            >
+                              {contact.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label htmlFor="cfg-support-phone-display" className="text-base text-white font-medium">
+                        Teléfono de soporte
+                      </Label>
+                      <Input
+                        id="cfg-support-phone-display"
+                        type="text"
+                        inputMode="numeric"
+                        value={supportPhone}
+                        onChange={(e) => setSupportPhone(sanitizePhone(e.target.value))}
+                        readOnly={!isSupportPhoneEditable}
+                        placeholder="Número de teléfono"
+                        className="h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white placeholder:text-gray-500 rounded-xl"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Botones con gradientes animados */}
+                  <div className="flex gap-4 pt-2">
+                    <button
                       onClick={handleSave}
                       disabled={paymentType === "cbu" && alias.length !== 22}
-                      className="flex-1 h-12 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-500 hover:from-amber-600 hover:via-yellow-600 hover:to-amber-600 text-black font-semibold text-base shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 h-14 btn-gradient-animated text-white font-bold text-base rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                      <Save className="w-4 h-4 mr-2" />
-                      Guardar cambios
-                    </Button>
-                    <Button
+                      <Save className="w-5 h-5" strokeWidth={2.5} />
+                      Guardar
+                    </button>
+                    <button
                       onClick={handleLogout}
-                      variant="outline"
-                      className="flex-1 h-12 border-purple-500/30 hover:bg-purple-900/30 hover:border-amber-400 transition-all duration-200 text-purple-200 bg-transparent"
+                      className="flex-1 h-14 border-2 border-purple-600/40 hover:border-purple-500 hover:bg-purple-950/30 transition-all text-white font-bold text-base rounded-xl flex items-center justify-center gap-2"
                     >
-                      <LogOut className="w-4 h-4 mr-2" />
-                      Cerrar sesión
-                    </Button>
+                      <LogOut className="w-5 h-5" strokeWidth={2.5} />
+                      Salir
+                    </button>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
 
-              {(activeAlias || activePhone) && (
-                <Card className="border border-amber-500/30 shadow-lg backdrop-blur-md bg-gradient-to-br from-amber-950/80 to-amber-900/75">
-                  <CardHeader className="space-y-1 pb-2 pt-4">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-amber-400" />
-                      <CardTitle className="text-lg bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-300 bg-clip-text text-transparent font-semibold">
-                        Configuración Activa
-                      </CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-2 pb-4">
-                    <div className="flex items-center gap-2">
-                      <Label className="text-xs text-amber-200/70 font-medium min-w-[120px]">Crear usuarios:</Label>
-                      <div className="h-8 px-3 rounded-md bg-amber-950/50 border border-amber-500/30 flex items-center flex-1">
-                        <span className="text-sm text-amber-100">
-                          {activeUserCreationEnabled ? "Activado" : "Desactivado"}
+                {/* Configuración activa */}
+                {(activeAlias || activePhone) && (
+                  // Card de configuración activa con fondo negro
+                  <div className="bg-black/90 backdrop-blur-xl rounded-2xl border border-purple-600/30 p-4 shadow-[0_0_30px_rgba(124,58,237,0.2)] space-y-3 animate-fadeIn">
+                    <h2 className="text-xl font-black text-white text-center neon-text">Configuración Activa</h2>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-4 rounded-lg border border-purple-600/20 bg-purple-950/10">
+                        <Label className="text-base text-gray-300 font-medium">Crear usuarios:</Label>
+                        <span className="text-base text-white font-bold">
+                          {activeUserCreationEnabled ? "✓ Activado" : "✗ Desactivado"}
                         </span>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Label className="text-xs text-amber-200/70 font-medium min-w-[120px]">Temporizador:</Label>
-                      <div className="h-8 px-3 rounded-md bg-amber-950/50 border border-amber-500/30 flex items-center flex-1">
-                        <span className="text-sm text-amber-100">{activeTransferTimer}s</span>
+                      <div className="flex items-center justify-between p-4 rounded-lg border border-purple-600/20 bg-purple-950/10">
+                        <Label className="text-base text-gray-300 font-medium">Temporizador:</Label>
+                        <span className="text-base text-purple-400 font-bold">{activeTransferTimer}s</span>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Label className="text-xs text-amber-200/70 font-medium min-w-[120px]">Monto mínimo:</Label>
-                      <div className="h-8 px-3 rounded-md bg-amber-950/50 border border-amber-500/30 flex items-center flex-1">
-                        <span className="text-sm text-amber-100">${activeMinAmount}</span>
+                      <div className="flex items-center justify-between p-4 rounded-lg border border-purple-600/20 bg-purple-950/10">
+                        <Label className="text-base text-gray-300 font-medium">Monto mínimo:</Label>
+                        <span className="text-base text-purple-400 font-bold">${activeMinAmount}</span>
                       </div>
-                    </div>
-                    {activeAlias && (
-                      <div className="flex items-center gap-2">
-                        <Label className="text-xs text-amber-200/70 font-medium min-w-[120px]">
-                          {activePaymentType === "alias" ? "Alias:" : "CBU:"}
-                        </Label>
-                        <div className="h-8 px-3 rounded-md bg-amber-950/50 border border-amber-500/30 flex items-center flex-1">
-                          <span className="text-sm text-amber-100 truncate">{activeAlias}</span>
+                      {activeAlias && (
+                        <div className="flex items-center justify-between p-4 rounded-lg border border-purple-600/20 bg-purple-950/10">
+                          <Label className="text-base text-gray-300 font-medium">
+                            {activePaymentType === "alias" ? "Alias:" : "CBU:"}
+                          </Label>
+                          <span className="text-base text-white font-bold truncate">{activeAlias}</span>
                         </div>
-                      </div>
-                    )}
-                    {activePhone && (
-                      <div className="flex items-center gap-2">
-                        <Label className="text-xs text-amber-200/70 font-medium min-w-[120px]">Soporte:</Label>
-                        <div className="h-8 px-3 rounded-md bg-amber-950/50 border border-amber-500/30 flex items-center flex-1">
-                          <span className="text-sm text-amber-100 truncate">{activeContactName}</span>
+                      )}
+                      {activePhone && (
+                        <div className="flex items-center justify-between p-4 rounded-lg border border-purple-600/20 bg-purple-950/10">
+                          <Label className="text-base text-gray-300 font-medium">Atención:</Label>
+                          <span className="text-base text-white font-bold truncate">{activeContactName}</span>
                         </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
+                      )}
+                      {activeSupportPhone && (
+                        <div className="flex items-center justify-between p-4 rounded-lg border border-purple-600/20 bg-purple-950/10">
+                          <Label className="text-base text-gray-300 font-medium">Soporte:</Label>
+                          <span className="text-base text-white font-bold truncate">{activeSupportPhone}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
