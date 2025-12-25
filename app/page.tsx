@@ -326,6 +326,8 @@ export default function TheCrown() {
 
   // Modified to use the updated handleWhatsApp function
   const handleWhatsApp = useCallback(() => {
+    const timeToUse = transferTime || localStorage.getItem("eds_transfer_time") || formatDateTime(new Date())
+
     const plataformaGuardada = localStorage.getItem("eds_platform") || plataforma
     let plataformaURL = platformUrl // Usar el URL de configuración
 
@@ -343,12 +345,23 @@ Quiero jug4r en: ${plataformaURL}
 
 Titular: ${titular}
 Monto: $${formatCurrency(monto)}
-Hora de transferencia: ${transferTime}
+Hora de transferencia: ${timeToUse}
 
 Adjunto comprobante.`
     const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
     window.open(url, "_blank")
-  }, [plataforma, usuario, titular, monto, transferTime, formatCurrency, password, phoneNumber, platformUrl])
+  }, [
+    plataforma,
+    usuario,
+    titular,
+    monto,
+    transferTime,
+    formatCurrency,
+    password,
+    phoneNumber,
+    platformUrl,
+    formatDateTime,
+  ])
 
   // Updated openInfoModal function
   const openInfoModal = useCallback(() => {
