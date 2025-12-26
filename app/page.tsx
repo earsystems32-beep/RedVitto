@@ -34,6 +34,7 @@ export default function TheCrown() {
   const [copiedAlias, setCopiedAlias] = useState(false)
   const [showToast, setShowToast] = useState(false)
   const [apodoError, setApodoError] = useState("")
+  const [digitosError, setDigitosError] = useState("")
   const [plataformaError, setPlataformaError] = useState("")
   const [titularError, setTitularError] = useState("")
   const [montoError, setMontoError] = useState("")
@@ -260,8 +261,13 @@ export default function TheCrown() {
 
   const handleDigitosChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
-    if (/^\d*$/.test(value) && value.length <= 4) {
-      setDigitos(value)
+    const cleaned = value.replace(/\D/g, "").slice(0, 4)
+    setDigitos(cleaned)
+
+    if (cleaned !== value) {
+      setDigitosError("Usá solo números.")
+    } else {
+      setDigitosError("")
     }
   }, [])
 
@@ -717,12 +723,16 @@ Adjunto comprobante.`
                   </Label>
                   <Input
                     id="digitos"
+                    type="tel"
+                    inputMode="numeric"
                     value={digitos}
                     onChange={handleDigitosChange}
-                    placeholder="1234"
-                    className="h-14 bg-gray-900 border border-gray-800 text-white text-base focus:border-purple-600 transition-colors rounded-xl"
+                    placeholder="Ingresá tus 4 dígitos"
+                    className="h-14 text-base bg-gray-900 border-gray-800 focus:border-purple-600 transition-colors text-white placeholder:text-gray-600 rounded-xl"
                     maxLength={4}
+                    required
                   />
+                  {digitosError && <p className="text-red-500 text-xs mt-1">{digitosError}</p>}
                 </div>
 
                 {/* Plataforma fija en Ganamos */}
@@ -819,7 +829,7 @@ Adjunto comprobante.`
           </div>
         )}
 
-        {/* NUEVO PASO 4 - Confirmación de Condiciones (insertado después del paso 3) */}
+        {/* PASO 4 - Confirmación de Condiciones (insertado después del paso 3) */}
         {step === 4 && (
           <div
             className="w-full max-w-lg mx-auto"
@@ -827,7 +837,7 @@ Adjunto comprobante.`
               animation: isStepAnimating ? "slideInFromRight 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
             }}
           >
-            <div className={`space-y-8 transition-all duration-500 ${isStepAnimating ? "opacity-100" : "opacity-0"}`}>
+            <div className={`space-y-6 transition-all duration-500 ${isStepAnimating ? "opacity-100" : "opacity-0"}`}>
               {/* Header */}
               <div className="text-center space-y-3">
                 <Crown className="w-10 h-10 mx-auto text-purple-500 mb-4" strokeWidth={2} />
@@ -837,8 +847,7 @@ Adjunto comprobante.`
                 </p>
               </div>
 
-              {/* Tarjeta de Condiciones */}
-              <div className="bg-gray-900/50 border border-purple-600/30 rounded-xl p-6 space-y-6">
+              <div className="bg-gray-900/50 border border-purple-600/30 rounded-xl p-6 space-y-4">
                 {/* Límite de premios */}
                 <div className="space-y-2">
                   <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -890,24 +899,22 @@ Adjunto comprobante.`
                 <p className="text-sm text-gray-400 text-center italic">
                   Al continuar, confirmás que leíste y aceptás estas condiciones.
                 </p>
-              </div>
 
-              {/* Checkbox */}
-              <div className="flex items-start gap-3 p-4 bg-gray-900 border border-gray-800 rounded-xl">
-                <input
-                  type="checkbox"
-                  id="accept-conditions"
-                  checked={conditionsAccepted}
-                  onChange={(e) => setConditionsAccepted(e.target.checked)}
-                  className="mt-1 w-5 h-5 rounded border-gray-700 text-purple-600 focus:ring-purple-600 focus:ring-2 cursor-pointer"
-                />
-                <label htmlFor="accept-conditions" className="text-base text-gray-300 cursor-pointer select-none">
-                  Acepto las condiciones
-                </label>
-              </div>
+                {/* Checkbox integrado */}
+                <div className="flex items-start gap-3 p-3 bg-black/30 border border-gray-800 rounded-lg">
+                  <input
+                    type="checkbox"
+                    id="accept-conditions"
+                    checked={conditionsAccepted}
+                    onChange={(e) => setConditionsAccepted(e.target.checked)}
+                    className="mt-1 w-5 h-5 rounded border-gray-700 text-purple-600 focus:ring-purple-600 focus:ring-2 cursor-pointer"
+                  />
+                  <label htmlFor="accept-conditions" className="text-base text-gray-300 cursor-pointer select-none">
+                    Acepto las condiciones
+                  </label>
+                </div>
 
-              {/* Botones */}
-              <div className="space-y-3">
+                {/* Botón Continuar integrado */}
                 <button
                   onClick={() => changeStep(5, "forward")} // Changed step to 5
                   disabled={!conditionsAccepted}
@@ -919,15 +926,16 @@ Adjunto comprobante.`
                 >
                   Continuar
                 </button>
-
-                <button
-                  onClick={() => changeStep(3, "back")}
-                  className="w-full h-14 text-base border border-gray-800 hover:border-purple-600 transition-all text-white font-medium rounded-xl hover:scale-105"
-                >
-                  <ArrowLeft className="w-5 h-5 inline mr-2" strokeWidth={2} />
-                  Volver
-                </button>
               </div>
+
+              {/* Botón Volver fuera de la tarjeta */}
+              <button
+                onClick={() => changeStep(3, "back")}
+                className="w-full h-14 text-base border border-gray-800 hover:border-purple-600 transition-all text-white font-medium rounded-xl hover:scale-105"
+              >
+                <ArrowLeft className="w-5 h-5 inline mr-2" strokeWidth={2} />
+                Volver
+              </button>
 
               {/* Nota informativa al pie */}
               <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
