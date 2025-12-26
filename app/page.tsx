@@ -19,6 +19,7 @@ import {
   Clock,
   TrendingUp,
   Home,
+  Trophy,
 } from "lucide-react"
 
 export default function TheCrown() {
@@ -66,6 +67,8 @@ export default function TheCrown() {
 
   // Assume settings is available after fetching
   const [settings, setSettings] = useState<any>(null) // Added state for settings
+
+  const [conditionsAccepted, setConditionsAccepted] = useState(false)
 
   // Separated config loading to only set timer when not in use
   useEffect(() => {
@@ -145,24 +148,18 @@ export default function TheCrown() {
 
     window.scrollTo({ top: 0, left: 0, behavior: "instant" })
 
-    // Initialize timer only on first entry to step 4
-    if (step === 4) {
+    // El bono ahora solo se muestra al pasar del paso 4 al 5 en changeStep
+
+    // Initialize timer only on first entry to step 5 (anteriormente paso 4)
+    if (step === 5) {
       if (!timerHasStarted) {
         setTransferButtonTimer(originalTimerSeconds)
         setTimerHasStarted(true)
-
-        if (bonusEnabled) {
-          setShowBonusModal(true)
-          setTimeout(() => setIsBonusModalAnimating(true), 10)
-        } else {
-          // Si el bono está deshabilitado, aceptar automáticamente
-          setBonusAccepted(true)
-        }
       }
     }
 
-    // Reset timer state when leaving step 4
-    if (step !== 4 && timerHasStarted) {
+    // Reset timer state when leaving step 5
+    if (step !== 5 && timerHasStarted) {
       setTimerHasStarted(false)
       setBonusAccepted(false)
     }
@@ -170,7 +167,8 @@ export default function TheCrown() {
 
   // Countdown timer runs only when conditions are met
   useEffect(() => {
-    if (step === 4 && bonusAccepted && transferButtonTimer > 0) {
+    if (step === 5 && bonusAccepted && transferButtonTimer > 0) {
+      // This step number will change
       const interval = setInterval(() => {
         setTransferButtonTimer((prev) => {
           if (prev <= 1) {
@@ -321,12 +319,14 @@ export default function TheCrown() {
     const formattedTime = formatDateTime(now)
     localStorage.setItem("eds_transfer_time", formattedTime)
     setTransferTime(formattedTime)
-    setStep(5) // Directly set step instead of calling changeStep
+    setStep(5) // Directly set step instead of calling changeStep. This will be step 6 after renumbering.
   }, [formatDateTime])
 
   // Modified to use the updated handleWhatsApp function
   const handleWhatsApp = useCallback(() => {
     const timeToUse = transferTime || localStorage.getItem("eds_transfer_time") || formatDateTime(new Date())
+
+    console.log("[v0] Hora de transferencia usada:", timeToUse)
 
     const plataformaGuardada = localStorage.getItem("eds_platform") || plataforma
     let plataformaURL = platformUrl // Usar el URL de configuración
@@ -377,13 +377,29 @@ Adjunto comprobante.`
 
   const isSoporteButtonEnabled = titular.trim().length > 0 && monto.trim().length > 0
 
-  const changeStep = useCallback((newStep: number, direction: "forward" | "back" = "forward") => {
-    setIsStepAnimating(false)
-    setTimeout(() => {
-      setStep(newStep)
-      setTimeout(() => setIsStepAnimating(true), 50)
-    }, 400)
-  }, [])
+  const changeStep = useCallback(
+    (newStep: number, direction: "forward" | "back" = "forward") => {
+      setIsStepAnimating(false)
+      setTimeout(() => {
+        setStep(newStep)
+        setIsStepAnimating(true)
+
+        if (newStep === 5 && direction === "forward" && bonusEnabled) {
+          setTimeout(() => {
+            setShowBonusModal(true)
+            setIsBonusModalAnimating(true)
+          }, 300)
+        }
+
+        if (newStep === 5 && direction === "forward") {
+          const currentTime = formatDateTime(new Date())
+          setTransferTime(currentTime)
+          localStorage.setItem("eds_transfer_time", currentTime)
+        }
+      }, 200)
+    },
+    [bonusEnabled, formatDateTime],
+  )
 
   const handleInputBlur = useCallback(() => {
     if (typeof window !== "undefined") {
@@ -402,10 +418,9 @@ Adjunto comprobante.`
   }, [])
 
   const handleWhatsAppSend = useCallback(() => {
-    // Lógica para enviar mensaje de WhatsApp con los datos del paso 5
-    // Esta función se llama desde el botón de "Acreditar mi carga" en el paso 5
+    // Lógica para enviar mensaje de WhatsApp con los datos del paso 5. This will now be step 6.
     handleWhatsApp() // Reutilizamos la lógica de handleWhatsApp
-    setStep(6) // Cambiar a paso 6 que ahora será confirmación
+    setStep(7) // Cambiar a paso 7 que ahora será confirmación
   }, [handleWhatsApp])
 
   // This function seems redundant with handleWhatsAppSend now, but kept for potential future use
@@ -417,7 +432,7 @@ Adjunto comprobante.`
     }
     // Simulate sending data or moving to next step
     // For now, we assume it leads to confirming the transfer
-    setStep(5) // Directly set step instead of calling changeStep
+    setStep(5) // Directly set step instead of calling changeStep. This will be step 6.
   }, [titular, monto])
 
   // Modified handleMontoChange to use formatCurrency and update montoInput state
@@ -469,6 +484,13 @@ Adjunto comprobante.`
       }
     }
   }, [])
+
+  useEffect(() => {
+    const savedTime = localStorage.getItem("eds_transfer_time")
+    if (savedTime && !transferTime) {
+      setTransferTime(savedTime)
+    }
+  }, [transferTime])
 
   const handleCopyAlias = useCallback(() => {
     copyToClipboard(paymentData || alias || "No configurado")
@@ -633,7 +655,7 @@ Adjunto comprobante.`
                   </button>
 
                   <button
-                    onClick={() => changeStep(7, "forward")}
+                    onClick={() => changeStep(8, "forward")} // Changed step to 8
                     className="flex flex-col items-center gap-2 py-4 rounded-xl border border-gray-800 hover:border-purple-600 transition-all group hover:scale-105"
                   >
                     <MessageCircle
@@ -776,7 +798,10 @@ Adjunto comprobante.`
 
               <div className="space-y-4 pt-4">
                 <button
-                  onClick={() => changeStep(4, "forward")}
+                  onClick={() => {
+                    setConditionsAccepted(false) // Resetear checkbox
+                    changeStep(4, "forward") // Changed step to 4
+                  }}
                   className="w-full h-14 btn-gradient-animated text-white font-semibold text-base rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(167,139,250,0.6)]"
                 >
                   Ir a pagar
@@ -794,8 +819,127 @@ Adjunto comprobante.`
           </div>
         )}
 
-        {/* PASO 4 - Enviá tu carga */}
+        {/* NUEVO PASO 4 - Confirmación de Condiciones (insertado después del paso 3) */}
         {step === 4 && (
+          <div
+            className="w-full max-w-lg mx-auto"
+            style={{
+              animation: isStepAnimating ? "slideInFromRight 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
+            }}
+          >
+            <div className={`space-y-8 transition-all duration-500 ${isStepAnimating ? "opacity-100" : "opacity-0"}`}>
+              {/* Header */}
+              <div className="text-center space-y-3">
+                <Crown className="w-10 h-10 mx-auto text-purple-500 mb-4" strokeWidth={2} />
+                <h2 className="text-3xl font-black text-white">Antes de continuar</h2>
+                <p className="text-gray-400 text-sm">
+                  Para proceder con la carga, por favor revisá y aceptá las condiciones.
+                </p>
+              </div>
+
+              {/* Tarjeta de Condiciones */}
+              <div className="bg-gray-900/50 border border-purple-600/30 rounded-xl p-6 space-y-6">
+                {/* Límite de premios */}
+                <div className="space-y-2">
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-purple-500" strokeWidth={2} />
+                    Límite de premios por jugada
+                  </h3>
+                  <p className="text-sm text-gray-300 leading-relaxed">
+                    Cada jugada tiene un premio máximo acreditable de{" "}
+                    <span className="font-bold text-white">$1.000.000</span>. Si un resultado supera ese valor, se
+                    acreditará el tope máximo permitido por jugada.
+                  </p>
+                </div>
+
+                {/* Separador */}
+                <div className="border-t border-gray-800"></div>
+
+                {/* Límites de retiro */}
+                <div className="space-y-3">
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <Wallet className="w-5 h-5 text-purple-500" strokeWidth={2} />
+                    Límites de retiro diarios
+                  </h3>
+                  <ul className="space-y-2 text-sm text-gray-300">
+                    <li className="flex items-start gap-2">
+                      <span className="text-purple-500 mt-0.5">•</span>
+                      <span>
+                        Hasta <span className="font-bold text-white">2 retiros</span> por día
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-purple-500 mt-0.5">•</span>
+                      <span>
+                        <span className="font-bold text-white">$125.000</span> por retiro
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-purple-500 mt-0.5">•</span>
+                      <span>
+                        Máximo <span className="font-bold text-white">$250.000</span> diarios
+                      </span>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Separador */}
+                <div className="border-t border-gray-800"></div>
+
+                {/* Mensaje de confirmación */}
+                <p className="text-sm text-gray-400 text-center italic">
+                  Al continuar, confirmás que leíste y aceptás estas condiciones.
+                </p>
+              </div>
+
+              {/* Checkbox */}
+              <div className="flex items-start gap-3 p-4 bg-gray-900 border border-gray-800 rounded-xl">
+                <input
+                  type="checkbox"
+                  id="accept-conditions"
+                  checked={conditionsAccepted}
+                  onChange={(e) => setConditionsAccepted(e.target.checked)}
+                  className="mt-1 w-5 h-5 rounded border-gray-700 text-purple-600 focus:ring-purple-600 focus:ring-2 cursor-pointer"
+                />
+                <label htmlFor="accept-conditions" className="text-base text-gray-300 cursor-pointer select-none">
+                  Acepto las condiciones
+                </label>
+              </div>
+
+              {/* Botones */}
+              <div className="space-y-3">
+                <button
+                  onClick={() => changeStep(5, "forward")} // Changed step to 5
+                  disabled={!conditionsAccepted}
+                  className={`w-full h-14 font-semibold text-base rounded-xl transition-all ${
+                    conditionsAccepted
+                      ? "btn-gradient-animated text-white hover:scale-105 hover:shadow-[0_0_40px_rgba(167,139,250,0.6)]"
+                      : "bg-gray-900 text-gray-600 cursor-not-allowed border border-gray-800"
+                  }`}
+                >
+                  Continuar
+                </button>
+
+                <button
+                  onClick={() => changeStep(3, "back")}
+                  className="w-full h-14 text-base border border-gray-800 hover:border-purple-600 transition-all text-white font-medium rounded-xl hover:scale-105"
+                >
+                  <ArrowLeft className="w-5 h-5 inline mr-2" strokeWidth={2} />
+                  Volver
+                </button>
+              </div>
+
+              {/* Nota informativa al pie */}
+              <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+                <AlertCircle className="w-4 h-4" strokeWidth={2} />
+                <span>Estas condiciones aplican a todas las operaciones dentro de la plataforma.</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* PASO 5 - Enviá tu carga (anteriormente paso 4) */}
+        {step === 5 && (
           <div
             className="w-full max-w-md mx-auto"
             style={{
@@ -840,7 +984,7 @@ Adjunto comprobante.`
                 </div>
 
                 <button
-                  onClick={() => changeStep(5, "forward")}
+                  onClick={() => changeStep(6, "forward")} // Changed step to 6
                   disabled={transferButtonTimer > 0}
                   className={`w-full h-14 font-semibold text-base rounded-xl flex items-center justify-center gap-3 transition-all ${
                     transferButtonTimer > 0
@@ -862,8 +1006,8 @@ Adjunto comprobante.`
           </div>
         )}
 
-        {/* PASO 5 - Últimos detalles */}
-        {step === 5 && (
+        {/* PASO 6 - Últimos detalles (anteriormente paso 5) */}
+        {step === 6 && (
           <div
             className="w-full max-w-md mx-auto"
             style={{
@@ -948,7 +1092,7 @@ Adjunto comprobante.`
                 </button>
 
                 <button
-                  onClick={() => changeStep(4, "back")}
+                  onClick={() => changeStep(5, "back")} // Changed step to 5
                   className="w-full h-14 text-base border border-gray-800 hover:border-purple-600 transition-all text-white font-medium rounded-xl hover:scale-105"
                 >
                   Volver
@@ -958,8 +1102,8 @@ Adjunto comprobante.`
           </div>
         )}
 
-        {/* PASO 6 - Confirmación Final */}
-        {step === 6 && (
+        {/* PASO 7 - Confirmación Final (anteriormente paso 6) */}
+        {step === 7 && (
           <div
             className={`transition-all duration-500 ease-out ${
               isStepAnimating ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-8 scale-95"
@@ -1008,6 +1152,7 @@ Adjunto comprobante.`
                     setUsername("")
                     setTitular("")
                     setMonto("")
+                    setConditionsAccepted(false) // Resetear checkbox
                     changeStep(1, "forward")
                   }}
                   className="w-full h-14 btn-gradient-animated text-white font-semibold text-base rounded-xl transition-all flex items-center justify-center gap-3 hover:scale-105 hover:shadow-[0_0_40px_rgba(167,139,250,0.6)]"
@@ -1020,8 +1165,8 @@ Adjunto comprobante.`
           </div>
         )}
 
-        {/* PASO 7 - Soporte (accesible desde el menú principal) */}
-        {step === 7 && (
+        {/* PASO 8 - Soporte (anteriormente paso 7) */}
+        {step === 8 && (
           <div
             className={`transition-all duration-500 ease-out ${
               isStepAnimating ? "opacity-100 translate-x-0 scale-100" : "opacity-0 translate-x-8 scale-95"
