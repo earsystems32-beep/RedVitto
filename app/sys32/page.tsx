@@ -316,6 +316,7 @@ export default function AdminPage() {
       }
 
       const bodyData = {
+        pin: adminPin,
         alias: alias.trim(),
         paymentType: paymentType,
         createUserEnabled: userCreationEnabled,
