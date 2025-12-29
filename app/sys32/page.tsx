@@ -123,13 +123,12 @@ export default function AdminPage() {
           }
         }
 
-        console.log("[v0] Números cargados desde DB:", numbers)
         setAttentionNumbers(numbers)
         setRotationMode(settings.rotation_mode || "clicks")
         setRotationThreshold(settings.rotation_threshold || 10)
       }
     } catch (error) {
-      console.error("[sys32] Error loading rotation numbers:", error)
+      console.error("Error al cargar números de rotación:", error)
     }
   }
 
@@ -301,136 +300,121 @@ export default function AdminPage() {
   const handleSave = async () => {
     setSaving(true)
 
-    console.log("[v0] attentionNumbers antes de enviar:", attentionNumbers)
-
-    const attentionColumns: any = {}
-
-    // Inicializar todas las columnas como vacías
-    for (let i = 1; i <= 9; i++) {
-      attentionColumns[`attention_phone_${i}`] = ""
-      attentionColumns[`attention_name_${i}`] = ""
-      attentionColumns[`attention_active_${i}`] = false
-    }
-
-    // Llenar solo las columnas que tienen números
-    attentionNumbers.forEach((num, index) => {
-      const colIndex = index + 1 // Índice de columna (1-9)
-      if (colIndex <= 9 && num.phone) {
-        attentionColumns[`attention_phone_${colIndex}`] = num.phone
-        attentionColumns[`attention_name_${colIndex}`] = num.label
-        attentionColumns[`attention_active_${colIndex}`] = num.active
-      }
-    })
-
-    console.log("[v0] attentionColumns construidas:", attentionColumns)
-
-    const activeCount = attentionNumbers.filter((n) => n.active).length
-
-    if (!rotationEnabled && activeCount !== 1) {
-      alert("Con rotación desactivada, debe haber exactamente 1 número activo")
-      setSaving(false)
-      return
-    }
-
-    if (rotationEnabled && activeCount === 0) {
-      alert("Activá al menos un número para la rotación")
-      setSaving(false)
-      return
-    }
-
-    const supportPhoneValue = sanitizePhone(supportPhone.trim())
-    const bonusPercentageNum = Number.parseInt(bonusPercentage, 10)
-
-    if (!supportPhoneValue || supportPhoneValue.length < 8) {
-      alert("Ingresá un teléfono de soporte válido (mínimo 8 dígitos)")
-      setSaving(false)
-      return
-    }
-
-    if (supportPhoneValue.length > 15) {
-      alert("El teléfono de soporte no puede tener más de 15 dígitos")
-      setSaving(false)
-      return
-    }
-
-    if (paymentType === "cbu") {
-      if (alias.length !== 22) {
-        alert("El CBU debe tener exactamente 22 dígitos")
-        setSaving(false)
-        return
-      }
-      if (!/^\d{22}$/.test(alias)) {
-        alert("El CBU solo debe contener números")
-        setSaving(false)
-        return
-      }
-    }
-
-    if (paymentType === "alias") {
-      const sanitized = sanitizeAlias(alias.trim())
-      if (!sanitized || sanitized.length < 6) {
-        alert("Ingresá un alias válido (mínimo 6 caracteres)")
-        setSaving(false)
-        return
-      }
-      if (!/^[A-Za-z0-9.-]+$/.test(sanitized)) {
-        alert("El alias solo puede contener letras, números, puntos y guiones")
-        setSaving(false)
-        return
-      }
-    }
-
-    const transferTimerNum = Number(transferTimer)
-    if (isNaN(transferTimerNum) || transferTimerNum < 10 || transferTimerNum > 300) {
-      alert("El temporizador debe estar entre 10 y 300 segundos")
-      setSaving(false)
-      return
-    }
-
-    const minAmountNum = Number(minAmount)
-    if (isNaN(minAmountNum) || minAmountNum < 1000) {
-      alert("El monto mínimo debe ser al menos $1,000")
-      setSaving(false)
-      return
-    }
-
-    if (bonusPercentageNum < 0 || bonusPercentageNum > 100) {
-      alert("El porcentaje del bono debe estar entre 0 y 100")
-      setSaving(false)
-      return
-    }
-
-    const urlTrimmed = platformUrl.trim()
-    if (!urlTrimmed) {
-      alert("Ingresá una URL válida para la plataforma")
-      setSaving(false)
-      return
-    }
-    if (!urlTrimmed.startsWith("http://") && !urlTrimmed.startsWith("https://")) {
-      alert("La URL debe comenzar con http:// o https://")
-      setSaving(false)
-      return
-    }
-
     try {
+      // Encontrar el número activo para sincronizar con columna legacy 'phone'
+      const activeNumber = attentionNumbers.find((n) => n.active)
+      const phoneForLegacy = activeNumber?.phone || attentionNumbers[0]?.phone || ""
+
+      // Construir columnas de atención (1-9)
+      const attentionColumns: Record<string, string | boolean> = {}
+
+      for (let i = 1; i <= 9; i++) {
+        const number = attentionNumbers[i - 1]
+        attentionColumns[`attention_phone_${i}`] = number?.phone || ""
+        attentionColumns[`attention_name_${i}`] = number?.label || ""
+        attentionColumns[`attention_active_${i}`] = number?.active || false
+      }
+
       const bodyData = {
         alias: alias.trim(),
         paymentType: paymentType,
         createUserEnabled: userCreationEnabled,
-        timerSeconds: transferTimerNum,
-        minAmount: minAmountNum,
-        support_phone: supportPhoneValue,
-        platformUrl: urlTrimmed,
+        timerSeconds: Number(transferTimer),
+        minAmount: Number(minAmount),
+        support_phone: sanitizePhone(supportPhone.trim()),
+        platformUrl: platformUrl.trim(),
         bonusEnabled: bonusEnabled,
-        bonusPercentage: bonusPercentageNum,
-        pin: adminPin,
+        bonusPercentage: Number(bonusPercentage),
         rotationEnabled: rotationEnabled,
         rotationMode: rotationMode,
         rotationThreshold: rotationThreshold,
+        phone: phoneForLegacy,
         ...attentionColumns,
       }
 
-      console.log("[v0] Body completo que se enviará a la API:", bodyData)
+      // Validaciones básicas antes de enviar
+      if (paymentType === "cbu") {
+        if (bodyData.alias.length !== 22) {
+          alert("El CBU debe tener exactamente 22 dígitos")
+          setSaving(false)
+          return
+        }
+        if (!/^\d{22}$/.test(bodyData.alias)) {
+          alert("El CBU solo debe contener números")
+          setSaving(false)
+          return
+        }
+      }
+
+      if (paymentType === "alias") {
+        const sanitized = sanitizeAlias(bodyData.alias.trim())
+        if (!sanitized || sanitized.length < 6) {
+          alert("Ingresá un alias válido (mínimo 6 caracteres)")
+          setSaving(false)
+          return
+        }
+        if (!/^[A-Za-z0-9.-]+$/.test(sanitized)) {
+          alert("El alias solo puede contener letras, números, puntos y guiones")
+          setSaving(false)
+          return
+        }
+      }
+
+      const transferTimerNum = Number(bodyData.timerSeconds)
+      if (isNaN(transferTimerNum) || transferTimerNum < 10 || transferTimerNum > 300) {
+        alert("El temporizador debe estar entre 10 y 300 segundos")
+        setSaving(false)
+        return
+      }
+
+      const minAmountNum = Number(bodyData.minAmount)
+      if (isNaN(minAmountNum) || minAmountNum < 1000) {
+        alert("El monto mínimo debe ser al menos $1,000")
+        setSaving(false)
+        return
+      }
+
+      if (bodyData.bonusPercentage < 0 || bodyData.bonusPercentage > 100) {
+        alert("El porcentaje del bono debe estar entre 0 y 100")
+        setSaving(false)
+        return
+      }
+
+      const urlTrimmed = bodyData.platformUrl
+      if (!urlTrimmed) {
+        alert("Ingresá una URL válida para la plataforma")
+        setSaving(false)
+        return
+      }
+      if (!urlTrimmed.startsWith("http://") && !urlTrimmed.startsWith("https://")) {
+        alert("La URL debe comenzar con http:// o https://")
+        setSaving(false)
+        return
+      }
+
+      const supportPhoneValue = sanitizePhone(bodyData.support_phone.trim())
+      if (!supportPhoneValue || supportPhoneValue.length < 8) {
+        alert("Ingresá un teléfono de soporte válido (mínimo 8 dígitos)")
+        setSaving(false)
+        return
+      }
+      if (supportPhoneValue.length > 15) {
+        alert("El teléfono de soporte no puede tener más de 15 dígitos")
+        setSaving(false)
+        return
+      }
+
+      const activeCount = attentionNumbers.filter((n) => n.active).length
+      if (!rotationEnabled && activeCount !== 1) {
+        alert("Con rotación desactivada, debe haber exactamente 1 número activo")
+        setSaving(false)
+        return
+      }
+      if (rotationEnabled && activeCount === 0) {
+        alert("Activá al menos un número para la rotación")
+        setSaving(false)
+        return
+      }
 
       const response = await fetch("/api/admin/settings", {
         method: "POST",
@@ -442,28 +426,30 @@ export default function AdminPage() {
       })
 
       if (!response.ok) {
-        throw new Error("Error al guardar la configuración")
+        const errorData = await response.json()
+        throw new Error(errorData.message || "Error al guardar la configuración")
       }
 
       const data = await response.json()
-      console.log("[v0] Respuesta de la API:", data)
 
       if (data.success) {
         setActiveAlias(alias.trim())
         setActivePaymentType(paymentType)
         setActiveUserCreationEnabled(userCreationEnabled)
-        setActiveTransferTimer(transferTimerNum)
-        setActiveMinAmount(minAmountNum)
+        setActiveTransferTimer(Number(transferTimer))
+        setActiveMinAmount(Number(minAmount))
         setActiveSupportPhone(supportPhoneValue)
         setActivePlatformUrl(urlTrimmed)
         setActiveBonusEnabled(bonusEnabled)
-        setActiveBonusPercentage(bonusPercentageNum)
-
-        alert("✅ Configuración guardada exitosamente.\nLos cambios se reflejan en todos los dispositivos.")
+        setActiveBonusPercentage(Number(bonusPercentage))
+        alert("✅ Configuración actualizada correctamente")
+        await loadRotationNumbers() // Recargar números después de guardar para confirmar
+      } else {
+        alert("❌ Error: " + data.message)
       }
     } catch (error) {
       console.error("Save error:", error)
-      alert("❌ Error al guardar. Verificá tu conexión e intentá de nuevo.")
+      alert("❌ Error al guardar la configuración. Verificá tu conexión e intentá de nuevo.")
     } finally {
       setSaving(false)
     }
