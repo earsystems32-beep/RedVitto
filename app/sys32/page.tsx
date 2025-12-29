@@ -99,12 +99,18 @@ export default function AdminPage() {
   }, [])
 
   const loadRotationNumbers = async () => {
+    console.log("[v0 DEBUG] Iniciando loadRotationNumbers...")
     try {
       const response = await fetch("/api/admin/settings")
       const data = await response.json()
 
+      console.log("[v0 DEBUG] Respuesta de API:", data)
+
       if (data.success && data.settings) {
         const settings = data.settings
+        console.log("[v0 DEBUG] Settings recibidos:", settings)
+
+        // Crear array de 9 posiciones (índices 0-8 corresponden a columnas 1-9)
         const numbers: AttentionNumber[] = []
 
         for (let i = 1; i <= 9; i++) {
@@ -112,23 +118,29 @@ export default function AdminPage() {
           const name = settings[`attention_name_${i}`]
           const active = settings[`attention_active_${i}`]
 
-          // Solo agregar al array si tiene un teléfono configurado
-          if (phone && phone.trim() !== "") {
-            numbers.push({
-              id: String(i), // Usar el índice como ID para mantener consistencia
-              phone: phone,
-              label: name || "",
-              active: active || false,
-            })
-          }
+          console.log(`[v0 DEBUG] Posición ${i}:`, { phone, name, active })
+
+          // Siempre agregar la posición, incluso si está vacía
+          numbers.push({
+            id: String(i),
+            phone: phone || "",
+            label: name || "",
+            active: active || false,
+          })
         }
+
+        console.log("[v0 DEBUG] Array de números construido:", numbers)
+        console.log(
+          "[v0 DEBUG] Números con teléfono:",
+          numbers.filter((n) => n.phone.trim() !== ""),
+        )
 
         setAttentionNumbers(numbers)
         setRotationMode(settings.rotation_mode || "clicks")
         setRotationThreshold(settings.rotation_threshold || 10)
       }
     } catch (error) {
-      console.error("Error al cargar números de rotación:", error)
+      console.error("[v0 DEBUG] Error al cargar números de rotación:", error)
     }
   }
 
@@ -266,41 +278,45 @@ export default function AdminPage() {
     }
   }
 
-  const handleDeleteNumber = (id: string) => {
-    setAttentionNumbers((prev) => prev.filter((num) => num.id !== id))
-  }
-
   const handleAddNumber = () => {
-    const phoneValue = sanitizePhone(newNumberPhone.trim())
-    const labelValue = newNumberLabel.trim()
+    // Buscar la primera posición vacía (índice 0-8)
+    const emptyIndex = attentionNumbers.findIndex((n) => !n.phone || n.phone.trim() === "")
 
-    if (!labelValue) {
-      alert("Ingresá un nombre para el contacto")
-      return
-    }
-
-    if (!phoneValue || phoneValue.length < 8) {
-      alert("Ingresá un teléfono válido (mínimo 8 dígitos)")
-      return
-    }
-
-    const nextIndex = attentionNumbers.length + 1
-    if (nextIndex > 9) {
-      alert("Máximo 9 números de atención permitidos")
+    if (emptyIndex === -1) {
+      alert("Ya tienes 9 números configurados (máximo permitido)")
       return
     }
 
     const newNumber: AttentionNumber = {
-      id: String(nextIndex),
-      phone: phoneValue,
-      label: labelValue,
+      id: String(emptyIndex + 1), // ID corresponde a columna 1-9
+      phone: sanitizePhone(newNumberPhone.trim()),
+      label: newNumberLabel.trim(),
       active: false,
     }
 
-    setAttentionNumbers((prev) => [...prev, newNumber])
-    setNewNumberLabel("")
+    console.log("[v0 DEBUG] Agregando número en posición:", emptyIndex + 1, newNumber)
+
+    // Crear nuevo array con el número en la posición correcta
+    const updatedNumbers = [...attentionNumbers]
+    updatedNumbers[emptyIndex] = newNumber
+
+    setAttentionNumbers(updatedNumbers)
     setNewNumberPhone("")
+    setNewNumberLabel("")
     setShowAddNumberForm(false)
+  }
+
+  const handleUpdateNumber = (id: string, updates: Partial<AttentionNumber>) => {
+    setAttentionNumbers((prev) => prev.map((num) => (num.id === id ? { ...num, ...updates } : num)))
+  }
+
+  const handleDeleteNumber = (id: string) => {
+    console.log("[v0 DEBUG] Eliminando número ID:", id)
+
+    // En lugar de eliminar, vaciar la posición
+    setAttentionNumbers((prev) =>
+      prev.map((num) => (num.id === id ? { id: num.id, phone: "", label: "", active: false } : num)),
+    )
   }
 
   const handleSave = async () => {
@@ -309,7 +325,8 @@ export default function AdminPage() {
     try {
       // Encontrar el número activo para sincronizar con columna legacy 'phone'
       const activeNumber = attentionNumbers.find((n) => n.active)
-      const phoneForLegacy = activeNumber?.phone || attentionNumbers[0]?.phone || ""
+      const phoneForLegacy =
+        activeNumber?.phone || attentionNumbers.find((n) => n.phone && n.phone.trim() !== "")?.phone || ""
 
       // Construir columnas de atención (1-9)
       const attentionColumns: Record<string, string | boolean> = {}
@@ -335,7 +352,7 @@ export default function AdminPage() {
         rotationEnabled: rotationEnabled,
         rotationMode: rotationMode,
         rotationThreshold: rotationThreshold,
-        phone: phoneForLegacy,
+        phone: phoneForLegacy, // Campo legacy para compatibilidad
         ...attentionColumns,
       }
 
@@ -819,50 +836,57 @@ export default function AdminPage() {
                         Lista de Números {!rotationEnabled && "(Solo 1 puede estar activo)"}
                       </h4>
 
-                      {attentionNumbers.filter((n) => n.phone.trim() !== "").length === 0 ? (
-                        <div className="rounded-lg border border-dashed border-purple-500/30 bg-black/20 p-6 text-center">
-                          <p className="text-gray-400">No hay números configurados. Agregá uno abajo.</p>
+                      {/* Actualizar renderizado para filtrar números vacíos al mostrar */}
+                      {attentionNumbers.filter((n) => n.phone && n.phone.trim() !== "").length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-purple-500/30 bg-purple-500/5 p-8 text-center">
+                          <p className="text-sm text-gray-400">No hay números configurados. Agregá uno abajo.</p>
                         </div>
                       ) : (
-                        attentionNumbers
-                          .filter((n) => n.phone.trim() !== "")
-                          .map((number) => (
-                            <div
-                              key={number.id}
-                              className="flex items-center justify-between rounded-lg border border-purple-500/20 bg-black/30 p-3"
-                            >
-                              <div className="flex-1">
-                                <p className="font-medium text-white">{number.label}</p>
-                                <p className="text-sm text-gray-400">{number.phone}</p>
-                              </div>
-
-                              <div className="flex items-center gap-3">
-                                {/* Toggle activo/inactivo */}
-                                <button
-                                  type="button"
-                                  onClick={() => handleToggleNumberActive(number.id)}
-                                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ${
-                                    number.active ? "bg-green-500" : "bg-gray-600"
-                                  }`}
-                                >
-                                  <span
-                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
-                                      number.active ? "translate-x-6" : "translate-x-1"
-                                    }`}
+                        <div className="space-y-2">
+                          {attentionNumbers
+                            .filter((n) => n.phone && n.phone.trim() !== "")
+                            .map((number) => (
+                              <div
+                                key={number.id}
+                                className="flex items-center justify-between rounded-lg border border-purple-500/20 bg-black/40 p-4"
+                              >
+                                <div className="flex-1">
+                                  <div className="font-medium text-white">{number.label || "Sin nombre"}</div>
+                                  <div className="text-sm text-gray-400">{number.phone}</div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <Switch
+                                    checked={number.active}
+                                    onCheckedChange={(checked) => {
+                                      if (checked) {
+                                        // Si se activa, desactivar los demás si rotación está desactivada
+                                        if (!rotationEnabled) {
+                                          setAttentionNumbers((prev) =>
+                                            prev.map((n) => ({
+                                              ...n,
+                                              active: n.id === number.id,
+                                            })),
+                                          )
+                                        } else {
+                                          handleUpdateNumber(number.id, { active: true })
+                                        }
+                                      } else {
+                                        handleUpdateNumber(number.id, { active: false })
+                                      }
+                                    }}
                                   />
-                                </button>
-
-                                {/* Botón eliminar */}
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteNumber(number.id)}
-                                  className="px-3 py-1 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"
-                                >
-                                  Eliminar
-                                </button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDeleteNumber(number.id)}
+                                    className="text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                                  >
+                                    Eliminar
+                                  </Button>
+                                </div>
                               </div>
-                            </div>
-                          ))
+                            ))}
+                        </div>
                       )}
                     </div>
 
@@ -914,7 +938,6 @@ export default function AdminPage() {
                               type="button"
                               onClick={() => {
                                 handleAddNumber()
-                                setShowAddNumberForm(false)
                               }}
                               className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
                             >
