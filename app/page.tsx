@@ -745,7 +745,7 @@ Gracias! 🎰👑`
       )}
 
       {/* Reducir padding del container principal para más espacio */}
-      <div className="container relative z-10 mx-auto max-w-md pt-4 pb-12 px-4">
+      <div className="container relative z-10 mx-auto max-w-md pt-4 pb-12 px-4 my-10">
         {isDropdownOpen && (
           <div className="fixed inset-0 z-50 bg-transparent" onClick={() => setIsDropdownOpen(false)} />
         )}
@@ -1191,7 +1191,7 @@ Gracias! 🎰👑`
                 <div className="space-y-3">
                   <Label className="text-lg text-white font-bold text-center block">Número de atención</Label>
                   <div className="w-full text-center p-4 rounded-xl bg-purple-950/30 border-2 border-purple-600/50">
-                    <p className="text-3xl font-black text-purple-400 tracking-wide">
+                    <p className="font-black text-purple-400 tracking-wide text-xl">
                       {attentionPhoneNumber ? `+${attentionPhoneNumber}` : "Cargando..."}
                     </p>
                   </div>

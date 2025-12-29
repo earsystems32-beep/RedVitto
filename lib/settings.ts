@@ -16,7 +16,6 @@ export interface Settings {
   alias: string
   phone: string
   supportPhone: string
-  supportName: string
   paymentType: "alias" | "cbu"
   platformUrl: string
   bonusEnabled: boolean
@@ -72,7 +71,6 @@ export async function getSettings(): Promise<Settings> {
       alias: data.alias || "",
       phone: data.phone || "",
       supportPhone: data.support_phone || "",
-      supportName: data.support_name || "",
       paymentType: data.payment_type,
       platformUrl: data.platform_url || "https://ganamos.sbs",
       bonusEnabled: data.bonus_enabled ?? true,
@@ -102,7 +100,6 @@ export async function updateSettings(updates: Partial<Settings>): Promise<Settin
     if (updates.alias !== undefined) dbUpdates.alias = updates.alias
     if (updates.phone !== undefined) dbUpdates.phone = updates.phone
     if (updates.supportPhone !== undefined) dbUpdates.support_phone = updates.supportPhone
-    if (updates.supportName !== undefined) dbUpdates.support_name = updates.supportName
     if (updates.paymentType !== undefined) dbUpdates.payment_type = updates.paymentType
     if (updates.platformUrl !== undefined) dbUpdates.platform_url = updates.platformUrl
     if (updates.bonusEnabled !== undefined) dbUpdates.bonus_enabled = updates.bonusEnabled
@@ -121,6 +118,8 @@ export async function updateSettings(updates: Partial<Settings>): Promise<Settin
         }
       })
     }
+
+    dbUpdates.updated_at = new Date().toISOString()
 
     const { data, error } = await supabase.from("settings").update(dbUpdates).eq("id", 1).select().single()
 
@@ -149,7 +148,6 @@ export async function updateSettings(updates: Partial<Settings>): Promise<Settin
       alias: data.alias || "",
       phone: data.phone || "",
       supportPhone: data.support_phone || "",
-      supportName: data.support_name || "",
       paymentType: data.payment_type,
       platformUrl: data.platform_url || "https://ganamos.sbs",
       bonusEnabled: data.bonus_enabled ?? true,
