@@ -76,6 +76,7 @@ export default function AdminPage() {
   const [newNumberPhone, setNewNumberPhone] = useState("")
 
   const [showAddNumberForm, setShowAddNumberForm] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -106,20 +107,23 @@ export default function AdminPage() {
         const settings = data.settings
         const numbers: AttentionNumber[] = []
 
-        // Convertir las 9 columnas a array
         for (let i = 1; i <= 9; i++) {
           const phone = settings[`attention_phone_${i}`]
           const name = settings[`attention_name_${i}`]
           const active = settings[`attention_active_${i}`]
 
-          numbers.push({
-            id: i,
-            phone: phone || "",
-            label: name || "",
-            active: active || false,
-          })
+          // Solo agregar al array si tiene un teléfono configurado
+          if (phone && phone.trim() !== "") {
+            numbers.push({
+              id: `attention_${i}`,
+              phone: phone,
+              label: name || "",
+              active: active || false,
+            })
+          }
         }
 
+        console.log("[v0] Números cargados desde DB:", numbers)
         setAttentionNumbers(numbers)
         setRotationMode(settings.rotation_mode || "clicks")
         setRotationThreshold(settings.rotation_threshold || 10)
@@ -295,15 +299,42 @@ export default function AdminPage() {
   }
 
   const handleSave = async () => {
+    setSaving(true)
+
+    console.log("[v0] attentionNumbers antes de enviar:", attentionNumbers)
+
+    const attentionColumns: any = {}
+
+    // Inicializar todas las columnas como vacías
+    for (let i = 1; i <= 9; i++) {
+      attentionColumns[`attention_phone_${i}`] = ""
+      attentionColumns[`attention_name_${i}`] = ""
+      attentionColumns[`attention_active_${i}`] = false
+    }
+
+    // Llenar solo las columnas que tienen números
+    attentionNumbers.forEach((num, index) => {
+      const colIndex = index + 1 // Índice de columna (1-9)
+      if (colIndex <= 9 && num.phone) {
+        attentionColumns[`attention_phone_${colIndex}`] = num.phone
+        attentionColumns[`attention_name_${colIndex}`] = num.label
+        attentionColumns[`attention_active_${colIndex}`] = num.active
+      }
+    })
+
+    console.log("[v0] attentionColumns construidas:", attentionColumns)
+
     const activeCount = attentionNumbers.filter((n) => n.active).length
 
     if (!rotationEnabled && activeCount !== 1) {
       alert("Con rotación desactivada, debe haber exactamente 1 número activo")
+      setSaving(false)
       return
     }
 
     if (rotationEnabled && activeCount === 0) {
       alert("Activá al menos un número para la rotación")
+      setSaving(false)
       return
     }
 
@@ -312,21 +343,25 @@ export default function AdminPage() {
 
     if (!supportPhoneValue || supportPhoneValue.length < 8) {
       alert("Ingresá un teléfono de soporte válido (mínimo 8 dígitos)")
+      setSaving(false)
       return
     }
 
     if (supportPhoneValue.length > 15) {
       alert("El teléfono de soporte no puede tener más de 15 dígitos")
+      setSaving(false)
       return
     }
 
     if (paymentType === "cbu") {
       if (alias.length !== 22) {
         alert("El CBU debe tener exactamente 22 dígitos")
+        setSaving(false)
         return
       }
       if (!/^\d{22}$/.test(alias)) {
         alert("El CBU solo debe contener números")
+        setSaving(false)
         return
       }
     }
@@ -335,10 +370,12 @@ export default function AdminPage() {
       const sanitized = sanitizeAlias(alias.trim())
       if (!sanitized || sanitized.length < 6) {
         alert("Ingresá un alias válido (mínimo 6 caracteres)")
+        setSaving(false)
         return
       }
       if (!/^[A-Za-z0-9.-]+$/.test(sanitized)) {
         alert("El alias solo puede contener letras, números, puntos y guiones")
+        setSaving(false)
         return
       }
     }
@@ -346,43 +383,36 @@ export default function AdminPage() {
     const transferTimerNum = Number(transferTimer)
     if (isNaN(transferTimerNum) || transferTimerNum < 10 || transferTimerNum > 300) {
       alert("El temporizador debe estar entre 10 y 300 segundos")
+      setSaving(false)
       return
     }
 
     const minAmountNum = Number(minAmount)
     if (isNaN(minAmountNum) || minAmountNum < 1000) {
       alert("El monto mínimo debe ser al menos $1,000")
+      setSaving(false)
       return
     }
 
     if (bonusPercentageNum < 0 || bonusPercentageNum > 100) {
       alert("El porcentaje del bono debe estar entre 0 y 100")
+      setSaving(false)
       return
     }
 
     const urlTrimmed = platformUrl.trim()
     if (!urlTrimmed) {
       alert("Ingresá una URL válida para la plataforma")
+      setSaving(false)
       return
     }
     if (!urlTrimmed.startsWith("http://") && !urlTrimmed.startsWith("https://")) {
       alert("La URL debe comenzar con http:// o https://")
+      setSaving(false)
       return
     }
 
     try {
-      const attentionColumns: Record<string, string | boolean> = {}
-
-      for (let i = 1; i <= 9; i++) {
-        const number = attentionNumbers[i - 1]
-        attentionColumns[`attention_phone_${i}`] = number?.phone || ""
-        attentionColumns[`attention_name_${i}`] = number?.label || ""
-        attentionColumns[`attention_active_${i}`] = number?.active || false
-      }
-
-      console.log("[v0] attentionNumbers array:", attentionNumbers)
-      console.log("[v0] attentionColumns construidas:", attentionColumns)
-
       const bodyData = {
         alias: alias.trim(),
         paymentType: paymentType,
@@ -434,6 +464,8 @@ export default function AdminPage() {
     } catch (error) {
       console.error("Save error:", error)
       alert("❌ Error al guardar. Verificá tu conexión e intentá de nuevo.")
+    } finally {
+      setSaving(false)
     }
   }
 
