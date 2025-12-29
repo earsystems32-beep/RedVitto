@@ -110,34 +110,36 @@ export default function AdminPage() {
         const settings = data.settings
         console.log("[v0 DEBUG] Settings recibidos:", settings)
 
-        // Crear array de 9 posiciones (índices 0-8 corresponden a columnas 1-9)
-        const numbers: AttentionNumber[] = []
+        if (settings.attentionNumbers && Array.isArray(settings.attentionNumbers)) {
+          // El backend ya devuelve un array de 9 posiciones
+          const numbers: AttentionNumber[] = settings.attentionNumbers.map((num: any, index: number) => ({
+            id: String(index + 1), // ID corresponde a columna 1-9
+            phone: num.phone || "",
+            label: num.name || "",
+            active: num.active || false,
+          }))
 
-        for (let i = 1; i <= 9; i++) {
-          const phone = settings[`attention_phone_${i}`]
-          const name = settings[`attention_name_${i}`]
-          const active = settings[`attention_active_${i}`]
+          console.log("[v0 DEBUG] Array de números construido:", numbers)
+          console.log(
+            "[v0 DEBUG] Números con teléfono:",
+            numbers.filter((n) => n.phone.trim() !== ""),
+          )
 
-          console.log(`[v0 DEBUG] Posición ${i}:`, { phone, name, active })
-
-          // Siempre agregar la posición, incluso si está vacía
-          numbers.push({
-            id: String(i),
-            phone: phone || "",
-            label: name || "",
-            active: active || false,
-          })
+          setAttentionNumbers(numbers)
+        } else {
+          // Si no hay números, crear array vacío de 9 posiciones
+          const emptyNumbers: AttentionNumber[] = Array.from({ length: 9 }, (_, i) => ({
+            id: String(i + 1),
+            phone: "",
+            label: "",
+            active: false,
+          }))
+          setAttentionNumbers(emptyNumbers)
+          console.log("[v0 DEBUG] No hay números configurados, creando array vacío")
         }
 
-        console.log("[v0 DEBUG] Array de números construido:", numbers)
-        console.log(
-          "[v0 DEBUG] Números con teléfono:",
-          numbers.filter((n) => n.phone.trim() !== ""),
-        )
-
-        setAttentionNumbers(numbers)
-        setRotationMode(settings.rotation_mode || "clicks")
-        setRotationThreshold(settings.rotation_threshold || 10)
+        setRotationMode(settings.rotationMode || "clicks")
+        setRotationThreshold(settings.rotationThreshold || 10)
       }
     } catch (error) {
       console.error("[v0 DEBUG] Error al cargar números de rotación:", error)
@@ -353,7 +355,8 @@ export default function AdminPage() {
         rotationMode: rotationMode,
         rotationThreshold: rotationThreshold,
         phone: phoneForLegacy, // Campo legacy para compatibilidad
-        ...attentionColumns,
+        attentionNumbers: attentionNumbers, // Enviar el array completo de números
+        ...attentionColumns, // Mantener columnas legacy para compatibilidad
       }
 
       // Validaciones básicas antes de enviar
