@@ -533,8 +533,22 @@ export default function AdminPage() {
                         max="300"
                         value={transferTimer}
                         onChange={(e) => {
-                          const value = Math.max(10, Math.min(300, Number.parseInt(e.target.value) || 10))
-                          setTransferTimer(String(value))
+                          setTransferTimer(e.target.value)
+                        }}
+                        onBlur={(e) => {
+                          const value = e.target.value
+                          if (value === "") {
+                            setTransferTimer("10")
+                            return
+                          }
+                          const num = Number.parseInt(value)
+                          if (isNaN(num) || num < 10) {
+                            setTransferTimer("10")
+                          } else if (num > 300) {
+                            setTransferTimer("300")
+                          } else {
+                            setTransferTimer(String(num))
+                          }
                         }}
                         placeholder="30"
                         className="h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white rounded-xl"
@@ -553,13 +567,25 @@ export default function AdminPage() {
                         min="1000"
                         value={minAmount}
                         onChange={(e) => {
-                          const value = Math.max(1000, Number.parseInt(e.target.value) || 1000)
-                          setMinAmount(String(value))
+                          setMinAmount(e.target.value)
+                        }}
+                        onBlur={(e) => {
+                          const value = e.target.value
+                          if (value === "") {
+                            setMinAmount("1000")
+                            return
+                          }
+                          const num = Number.parseInt(value)
+                          if (isNaN(num) || num < 1000) {
+                            setMinAmount("1000")
+                          } else {
+                            setMinAmount(String(num))
+                          }
                         }}
                         placeholder="2000"
                         className="h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white rounded-xl"
                       />
-                      <p className="text-xs text-gray-400">Monto mínimo en $ (1000 mínimo)</p>
+                      <p className="text-xs text-gray-400">Monto mínimo en $ (sin máximo)</p>
                     </div>
 
                     {/* Tipo de pago y Alias/CBU */}

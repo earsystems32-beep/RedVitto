@@ -142,7 +142,9 @@ export default function TheCrown() {
     return () => clearInterval(interval)
   }, [timerHasStarted, attentionPhoneNumber])
 
-  const password = "12345678"
+  // const password = "12345678" // Removed password as it's no longer used directly
+
+  const password = "12345678" // Keep this as it's used in handleWhatsApp
 
   const paymentLabel = paymentType === "alias" ? "Alias" : "CBU"
   const minAmountStr = String(minAmount)
@@ -573,8 +575,7 @@ Gracias! 🎰👑`
     const whatsappUrl = `https://wa.me/${currentPhone}?text=${encodeURIComponent(message)}`
     window.open(whatsappUrl, "_blank")
 
-    // Ir al paso de confirmación
-    changeStep(7, "forward") // Changed to step 7
+    changeStep(8, "forward")
   }, [
     transferTime,
     usuario,
@@ -1185,7 +1186,7 @@ Gracias! 🎰👑`
                   <Label className="text-lg text-white font-bold text-center block">Número de atención</Label>
                   <div className="w-full text-center p-4 rounded-xl bg-purple-950/30 border-2 border-purple-600/50">
                     <p className="text-3xl font-black text-purple-400 tracking-wide">
-                      {attentionPhoneNumber || "Cargando..."}
+                      {attentionPhoneNumber ? `+${attentionPhoneNumber}` : "Cargando..."}
                     </p>
                   </div>
                   <button
@@ -1292,11 +1293,11 @@ Gracias! 🎰👑`
                 </Label>
                 <Input
                   id="monto"
-                  type="text" // Changed to text to handle comma input correctly, validation happens on change
-                  inputMode="decimal" // Use decimal for currency input
-                  value={montoInput} // Bind to montoInput for real-time display
+                  type="text"
+                  inputMode="decimal"
+                  value={montoInput}
                   onChange={(e) => {
-                    handleMontoChange(e) // Use the dedicated handler
+                    handleMontoChange(e)
                     if (montoError) setMontoError("")
                   }}
                   placeholder="Ingresá el monto"
@@ -1314,7 +1315,6 @@ Gracias! 🎰👑`
                   setTitularError("Ingresá el titular de la cuenta")
                   return
                 }
-                // Re-validate monto based on montoInput for confirmation
                 const cleanedValue = montoInput.replace(/,/g, ".")
                 const num = Number.parseFloat(cleanedValue)
                 if (!num || num < minAmount) {
@@ -1322,10 +1322,14 @@ Gracias! 🎰👑`
                   return
                 }
 
-                // Llamar a handleWhatsAppSend que recopila y envía todo
                 await handleWhatsAppSend()
               }}
-              className="w-full h-14 btn-gradient-animated text-white font-semibold text-base rounded-xl transition-all flex items-center justify-center gap-2 hover:scale-105 hover:shadow-[0_0_40px_rgba(167,139,250,0.6)]"
+              disabled={!titular.trim() || !montoInput.trim()}
+              className={`w-full h-14 text-white font-semibold text-base rounded-xl transition-all flex items-center justify-center gap-2 ${
+                !titular.trim() || !montoInput.trim()
+                  ? "bg-gray-800 text-gray-500 cursor-not-allowed"
+                  : "btn-gradient-animated hover:scale-105 hover:shadow-[0_0_40px_rgba(167,139,250,0.6)]"
+              }`}
             >
               <span>Enviar Solicitud</span>
               <ChevronRight className="w-5 h-5" strokeWidth={2.5} />
@@ -1341,48 +1345,47 @@ Gracias! 🎰👑`
           </div>
         )}
 
-        {/* PASO 8 - Soporte (anteriormente paso 7) */}
         {step === 8 && (
-          <div
-            className={`transition-all duration-500 ease-out ${
-              isStepAnimating ? "opacity-100 translate-x-0 scale-100" : "opacity-0 translate-x-8 scale-95"
-            }`}
-            style={{
-              animation: isStepAnimating ? "slideInFromLeft 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
-            }}
-          >
-            <div className="space-y-10">
-              <div className="space-y-6 text-center">
-                <div className="flex justify-center">
-                  <div className="w-16 h-16 rounded-full bg-gray-900 border border-gray-800 flex items-center justify-center">
-                    <MessageCircle className="w-8 h-8 text-purple-500" strokeWidth={2} />
-                  </div>
+          <div className={`space-y-6 transition-opacity duration-300 ${isStepAnimating ? "opacity-100" : "opacity-0"}`}>
+            <div className="text-center space-y-6">
+              {/* Ícono de éxito */}
+              <div className="flex justify-center">
+                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-[0_0_40px_rgba(34,197,94,0.4)]">
+                  <Check className="w-12 h-12 text-white" strokeWidth={3} />
                 </div>
-                <h2 className="text-4xl font-bold text-white">Soporte</h2>
               </div>
 
-              <p className="text-center text-gray-400 text-base leading-relaxed">
-                Comunicate con nuestro equipo para reclamos y consultas sobre fichas, accesos o promociones.
-              </p>
+              <div className="space-y-3">
+                <h1 className="text-3xl md:text-4xl font-black text-white neon-text tracking-tight">
+                  ¡Solicitud Completada!
+                </h1>
+                <p className="text-gray-300 text-lg">Tu comprobante fue enviado exitosamente</p>
+              </div>
 
-              <div className="space-y-4">
-                <a
-                  href={`https://wa.me/${supportPhone}?text=Hola,%20me%20contacto%20desde%20TheCrown.`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full h-14 btn-gradient-animated text-white font-semibold text-base rounded-xl transition-all flex items-center justify-center gap-3 hover:scale-105 hover:shadow-[0_0_40px_rgba(167,139,250,0.6)]"
-                >
-                  <MessageCircle className="w-5 h-5" strokeWidth={2} />
-                  <span>Contactar Soporte</span>
-                </a>
-
-                <button
-                  onClick={() => changeStep(1, "back")}
-                  className="w-full h-14 text-base border border-gray-800 hover:border-purple-600 transition-all text-white font-medium rounded-xl hover:scale-105"
-                >
-                  <ArrowLeft className="w-5 h-5 inline mr-2" strokeWidth={2} />
-                  Volver al inicio
-                </button>
+              {/* Información de seguimiento */}
+              <div className="p-6 rounded-xl bg-purple-950/20 border border-purple-600/40 space-y-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-6 h-6 text-purple-400 flex-shrink-0 mt-0.5" strokeWidth={2} />
+                  <div className="flex-1 text-left space-y-2">
+                    <p className="text-sm text-purple-200 leading-relaxed">
+                      <strong className="font-semibold">¿Qué sigue?</strong>
+                    </p>
+                    <ul className="text-sm text-gray-300 space-y-2">
+                      <li className="flex items-start gap-2">
+                        <span className="text-purple-400">•</span>
+                        <span>Revisaremos tu comprobante en los próximos minutos</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-purple-400">•</span>
+                        <span>Te responderemos por WhatsApp con la confirmación</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-purple-400">•</span>
+                        <span>Tu carga será acreditada una vez verificada</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
