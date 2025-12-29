@@ -20,7 +20,6 @@ import {
   Trophy,
   ChevronRight,
   ChevronLeft,
-  Download,
   Phone,
   ArrowRight,
   Hourglass,
@@ -624,6 +623,17 @@ Gracias! 🎰👑`
   const aliasForSummary = alias || "No configurado"
   const generatedUsername = username // Assuming username state holds the generated username
 
+  const handleOpenDialer = () => {
+    const phone = getNextAttentionNumber(settings?.phone, settings?.rotationEnabled)
+    console.log("[v0] Abriendo marcador con número:", phone)
+
+    // Abrir el marcador del teléfono con el número cargado
+    window.location.href = `tel:${phone}`
+
+    // Habilitar el botón de WhatsApp inmediatamente
+    setContactSaved(true)
+  }
+
   const handleSaveContact = async () => {
     const phone = getNextAttentionNumber(settings?.phone, settings?.rotationEnabled)
 
@@ -1197,42 +1207,50 @@ Gracias! 🎰👑`
                 <div className="inline-block px-4 py-2 rounded-full bg-purple-950/50 border border-purple-600/40 mb-4">
                   <span className="text-sm font-bold text-purple-400">Paso 5 de 5</span>
                 </div>
-                <h2 className="text-3xl font-bold text-white mb-2 neon-text">Guardá nuestro contacto</h2>
-                <p className="text-gray-400 text-sm">Para concluir la carga debés agendar el teléfono</p>
+                <h2 className="text-3xl font-bold text-white mb-2 neon-text">Último paso para acreditar tu carga</h2>
               </div>
 
               <div className="space-y-4 p-6 rounded-2xl border-2 border-purple-600/50 bg-purple-950/20">
-                <div className="flex items-center gap-3 mb-3">
-                  <Phone className="w-8 h-8 text-purple-400" strokeWidth={2} />
-                  <div>
-                    <h3 className="text-xl font-bold text-white">La Corona</h3>
-                    <p className="text-sm text-purple-300">
-                      {getNextAttentionNumber(settings?.phone, settings?.rotationEnabled)}
+                <div className="space-y-3 text-gray-300 text-base leading-relaxed">
+                  <div className="flex items-start gap-3">
+                    <div className="w-7 h-7 rounded-full bg-purple-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-white font-bold text-sm">1</span>
+                    </div>
+                    <p>Tocá "Guardar contacto".</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-7 h-7 rounded-full bg-purple-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-white font-bold text-sm">2</span>
+                    </div>
+                    <p>
+                      Guardá el contacto como <span className="font-bold text-purple-300">La Corona</span> desde tu
+                      agenda.
                     </p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-7 h-7 rounded-full bg-purple-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-white font-bold text-sm">3</span>
+                    </div>
+                    <p>Volvé a esta pantalla y continuá por WhatsApp.</p>
                   </div>
                 </div>
 
-                <p className="text-base text-gray-300 leading-relaxed">
-                  Guardá este contacto en tu agenda para poder completar tu carga.
-                </p>
-
                 {!contactSaved ? (
                   <button
-                    onClick={handleSaveContact}
-                    className="w-full h-14 btn-gradient-animated text-white font-bold text-base rounded-xl transition-all flex items-center justify-center gap-2 hover:scale-105"
+                    onClick={handleOpenDialer}
+                    className="w-full h-14 btn-gradient-animated text-white font-bold text-base rounded-xl transition-all flex items-center justify-center gap-2 hover:scale-105 mt-6"
                   >
-                    <Download className="w-5 h-5" strokeWidth={2.5} />
-                    <span>Agregar a mis contactos</span>
+                    <Phone className="w-5 h-5" strokeWidth={2.5} />
+                    <span>Guardar contacto</span>
                   </button>
                 ) : (
-                  <div className="flex items-center justify-center gap-2 text-green-400 font-semibold">
+                  <div className="flex items-center justify-center gap-2 text-green-400 font-semibold mt-6">
                     <Check className="w-5 h-5" strokeWidth={2.5} />
-                    <span>Contacto guardado</span>
+                    <span>Marcador abierto - Guardá el contacto</span>
                   </div>
                 )}
               </div>
 
-              {/* Botón de WhatsApp */}
               <button
                 onClick={handleWhatsAppSend}
                 disabled={!contactSaved}

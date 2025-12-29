@@ -798,13 +798,13 @@ export default function AdminPage() {
                         </div>
                         <button
                           onClick={() => setRotationEnabled(!rotationEnabled)}
-                          className={`relative w-16 h-9 rounded-full transition-all duration-300 shadow-lg ${
+                          className={`relative w-14 h-8 rounded-full transition-all duration-300 shadow-lg flex-shrink-0 ${
                             rotationEnabled ? "bg-gradient-to-r from-purple-600 to-purple-500" : "bg-gray-700"
                           }`}
                         >
                           <span
-                            className={`absolute top-1 w-7 h-7 bg-white rounded-full transition-all duration-300 shadow-md ${
-                              rotationEnabled ? "left-8" : "left-1"
+                            className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all duration-300 shadow-md ${
+                              rotationEnabled ? "left-7" : "left-1"
                             }`}
                           />
                         </button>
