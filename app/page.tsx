@@ -558,6 +558,16 @@ Adjunto comprobante.`
       return
     }
 
+    console.log("[v0 DEBUG] Settings object before getNextAttentionNumber:", {
+      rotationEnabled: settings.rotationEnabled,
+      rotationMode: settings.rotationMode,
+      rotationThreshold: settings.rotationThreshold,
+      currentRotationIndex: settings.currentRotationIndex,
+      rotationClickCount: settings.rotationClickCount,
+      attentionNumbers: settings.attentionNumbers,
+      fullSettings: settings,
+    })
+
     const currentPhone = await getNextAttentionNumber(settings)
 
     console.log("[v0] Enviando mensaje a WhatsApp con número:", currentPhone)
