@@ -22,6 +22,7 @@ import {
   ChevronLeft,
   ArrowRight,
   Hourglass,
+  Phone,
 } from "lucide-react"
 import { generateVCF } from "@/lib/vcf-generator"
 import { getNextAttentionNumber } from "@/lib/whatsapp-rotation"
@@ -730,6 +731,16 @@ Gracias! 🎰👑`
     }, 5000)
   }, [settings, userOS])
 
+  // Helper function to format phone numbers (e.g., +54 341 6605903)
+  const formatPhoneNumber = (number: string): string => {
+    if (!number) return ""
+    const cleaned = number.replace(/\D/g, "")
+    if (cleaned.startsWith("54")) {
+      return `+${cleaned.substring(0, 2)} ${cleaned.substring(2, 5)} ${cleaned.substring(5)}`
+    }
+    return `+${cleaned}`
+  }
+
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden bg-black">
       {showToast && (
@@ -854,7 +865,7 @@ Gracias! 🎰👑`
                   </button>
 
                   <button
-                    onClick={() => changeStep(8, "forward")} // Changed step to 8
+                    onClick={() => changeStep(9, "forward")}
                     className="flex flex-col items-center gap-2 py-4 rounded-xl border border-gray-800 hover:border-purple-600 transition-all group hover:scale-105"
                   >
                     <MessageCircle
@@ -1351,6 +1362,7 @@ Gracias! 🎰👑`
           </div>
         )}
 
+        {/* PASO 8: Comprobante enviado */}
         {step === 8 && (
           <div className={`space-y-6 transition-opacity duration-300 ${isStepAnimating ? "opacity-100" : "opacity-0"}`}>
             <div className="text-center space-y-6">
@@ -1393,6 +1405,71 @@ Gracias! 🎰👑`
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* PASO 9: Pantalla de Soporte */}
+        {step === 9 && (
+          <div className={`space-y-6 transition-opacity duration-300 ${isStepAnimating ? "opacity-100" : "opacity-0"}`}>
+            <div className="text-center space-y-6">
+              {/* Ícono de soporte */}
+              <div className="flex justify-center">
+                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-[0_0_40px_rgba(168,85,247,0.4)]">
+                  <MessageCircle className="w-12 h-12 text-white" strokeWidth={2.5} />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h1 className="text-3xl md:text-4xl font-black text-white neon-text tracking-tight">
+                  Contacto de Soporte
+                </h1>
+                <p className="text-gray-300 text-lg">Estamos aquí para ayudarte</p>
+              </div>
+
+              {/* Información de contacto */}
+              <div className="p-6 rounded-xl bg-purple-950/20 border border-purple-600/40 space-y-4">
+                <div className="space-y-3">
+                  <p className="text-sm text-purple-200">
+                    <strong className="font-semibold">Comunicate con nosotros</strong>
+                  </p>
+                  <p className="text-gray-300 text-sm leading-relaxed">
+                    Para consultas, soporte o cualquier duda, contactanos por WhatsApp al siguiente número:
+                  </p>
+                  <div className="flex items-center justify-center gap-3 p-4 rounded-lg bg-purple-900/30 border border-purple-500/30">
+                    <Phone className="w-5 h-5 text-purple-400" strokeWidth={2} />
+                    <span className="text-2xl font-bold text-white tracking-wide">
+                      {formatPhoneNumber(settings?.support_phone || "543416605903")}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Botón de WhatsApp */}
+                <button
+                  onClick={() => {
+                    const phone = settings?.support_phone || "543416605903"
+                    const message = encodeURIComponent("Hola, necesito soporte con TheCrown")
+                    window.open(`https://wa.me/${phone}?text=${message}`, "_blank")
+                  }}
+                  className="w-full h-12 btn-gradient-animated text-white font-semibold text-base rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(167,139,250,0.6)] flex items-center justify-center gap-2"
+                >
+                  <MessageCircle className="w-5 h-5" strokeWidth={2} />
+                  Abrir WhatsApp
+                </button>
+
+                {/* Horarios de atención */}
+                <div className="pt-3 border-t border-purple-600/30">
+                  <p className="text-xs text-gray-400 text-center">Horarios de atención: Lunes a Domingo, 24 horas</p>
+                </div>
+              </div>
+
+              {/* Botón volver */}
+              <button
+                onClick={() => changeStep(1, "back")}
+                className="w-full h-12 rounded-xl border border-gray-700 hover:border-purple-600 text-gray-300 hover:text-white transition-all font-medium"
+              >
+                Volver al Inicio
+              </button>
             </div>
           </div>
         )}

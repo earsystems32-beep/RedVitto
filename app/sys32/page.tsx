@@ -115,7 +115,7 @@ export default function AdminPage() {
           // Solo agregar al array si tiene un teléfono configurado
           if (phone && phone.trim() !== "") {
             numbers.push({
-              id: `attention_${i}`,
+              id: String(i), // Usar el índice como ID para mantener consistencia
               phone: phone,
               label: name || "",
               active: active || false,
@@ -284,8 +284,14 @@ export default function AdminPage() {
       return
     }
 
+    const nextIndex = attentionNumbers.length + 1
+    if (nextIndex > 9) {
+      alert("Máximo 9 números de atención permitidos")
+      return
+    }
+
     const newNumber: AttentionNumber = {
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: String(nextIndex),
       phone: phoneValue,
       label: labelValue,
       active: false,
