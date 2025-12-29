@@ -388,7 +388,6 @@ export default function AdminPage() {
         credentials: "include",
         body: JSON.stringify({
           alias: alias.trim(),
-          phone: attentionNumbers.find((n) => n.active)?.phone || supportPhoneValue,
           paymentType: paymentType,
           createUserEnabled: userCreationEnabled,
           timerSeconds: transferTimerNum,
