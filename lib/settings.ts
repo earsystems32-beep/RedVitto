@@ -109,6 +109,10 @@ export async function updateSettings(updates: Record<string, unknown>): Promise<
     if (updates.rotationMode !== undefined) dbUpdates.rotation_mode = updates.rotationMode
     if (updates.rotationThreshold !== undefined) dbUpdates.rotation_threshold = updates.rotationThreshold
 
+    if (updates.currentRotationIndex !== undefined) dbUpdates.current_rotation_index = updates.currentRotationIndex
+    if (updates.rotationClickCount !== undefined) dbUpdates.rotation_click_count = updates.rotationClickCount
+    if (updates.lastRotationTime !== undefined) dbUpdates.last_rotation_time = updates.lastRotationTime
+
     for (let i = 1; i <= 9; i++) {
       const phoneKey = `attention_phone_${i}`
       const nameKey = `attention_name_${i}`

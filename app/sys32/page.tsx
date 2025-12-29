@@ -78,6 +78,12 @@ export default function AdminPage() {
   const [showAddNumberForm, setShowAddNumberForm] = useState(false)
   const [saving, setSaving] = useState(false)
 
+  // Estados de rotación
+  const [currentRotationIndex, setCurrentRotationIndex] = useState(0)
+  const [rotationClickCount, setRotationClickCount] = useState(0)
+  const [rotationLastUpdate, setRotationLastUpdate] = useState<Date | null>(null)
+  const [timeRemaining, setTimeRemaining] = useState(0)
+
   useEffect(() => {
     const checkAuth = async () => {
       const response = await fetch("/api/admin/verify", {
@@ -92,6 +98,7 @@ export default function AdminPage() {
           setAdminPin(data.pin || "")
           await loadSettings()
           loadRotationNumbers()
+          loadRotationStatus() // Cargar estado de rotación después de autenticar
         }
       }
     }
@@ -181,6 +188,50 @@ export default function AdminPage() {
     }
   }
 
+  const loadRotationStatus = async () => {
+    try {
+      const response = await fetch("/api/admin/settings", {
+        credentials: "include",
+        cache: "no-store",
+      })
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.settings) {
+          setCurrentRotationIndex(data.settings.currentRotationIndex || 0)
+          setRotationClickCount(data.settings.rotationClickCount || 0)
+          if (data.settings.rotation_last_update) {
+            setRotationLastUpdate(new Date(data.settings.rotation_last_update))
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error al cargar estado de rotación:", error)
+    }
+  }
+
+  useEffect(() => {
+    if (rotationEnabled) {
+      loadRotationStatus() // Cargar inicialmente
+      const interval = setInterval(loadRotationStatus, 2000) // Actualizar cada 2 segundos
+      return () => clearInterval(interval)
+    }
+  }, [rotationEnabled])
+
+  useEffect(() => {
+    if (rotationEnabled && rotationMode === "time" && rotationLastUpdate) {
+      const updateTimer = () => {
+        const now = new Date()
+        const elapsed = Math.floor((now.getTime() - rotationLastUpdate.getTime()) / 1000 / 60) // minutos
+        const remaining = Math.max(0, rotationThreshold - elapsed)
+        setTimeRemaining(remaining)
+      }
+
+      updateTimer() // Actualizar inmediatamente
+      const interval = setInterval(updateTimer, 1000) // Actualizar cada segundo
+      return () => clearInterval(interval)
+    }
+  }, [rotationEnabled, rotationMode, rotationLastUpdate, rotationThreshold])
+
   const handleLogin = async () => {
     if (!pinInput.trim()) {
       alert("Ingresá el PIN de administrador")
@@ -204,6 +255,7 @@ export default function AdminPage() {
           setAdminPin(testPIN)
           await loadSettings()
           loadRotationNumbers() // Cargar números de rotación después de autenticar
+          loadRotationStatus() // Cargar estado de rotación después de autenticar
           setPinInput("")
         } else {
           alert("PIN incorrecto")
@@ -357,6 +409,10 @@ export default function AdminPage() {
         phone: phoneForLegacy, // Campo legacy para compatibilidad
         attentionNumbers: attentionNumbers, // Enviar el array completo de números
         ...attentionColumns, // Mantener columnas legacy para compatibilidad
+        // Agregar datos de rotación al guardar
+        currentRotationIndex: currentRotationIndex,
+        rotationClickCount: rotationClickCount,
+        rotationLastUpdate: rotationLastUpdate?.toISOString(),
       }
 
       // Validaciones básicas antes de enviar
@@ -471,6 +527,7 @@ export default function AdminPage() {
         setActiveBonusPercentage(Number(bonusPercentage))
         alert("✅ Configuración actualizada correctamente")
         await loadRotationNumbers() // Recargar números después de guardar para confirmar
+        await loadRotationStatus() // Recargar estado de rotación después de guardar
       } else {
         alert("❌ Error: " + data.message)
       }
@@ -830,6 +887,27 @@ export default function AdminPage() {
                             className="w-full rounded-lg border border-purple-500/30 bg-black/60 px-4 py-2 text-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
                           />
                         </div>
+                        {/* Mostrar información de rotación en tiempo real */}
+                        <div className="mt-4 space-y-2">
+                          <p className="text-xs text-gray-400">Estado Actual:</p>
+                          <p className="text-sm text-gray-300">
+                            Índice de Rotación: <span className="font-bold text-white">{currentRotationIndex}</span>
+                          </p>
+                          <p className="text-sm text-gray-300">
+                            Clicks de Rotación: <span className="font-bold text-white">{rotationClickCount}</span>
+                          </p>
+                          {rotationMode === "time" && (
+                            <p className="text-sm text-gray-300">
+                              Tiempo Restante: <span className="font-bold text-white">{timeRemaining} min</span>
+                            </p>
+                          )}
+                          {rotationLastUpdate && (
+                            <p className="text-sm text-gray-300">
+                              Última Actualización:{" "}
+                              <span className="font-bold text-white">{rotationLastUpdate.toLocaleString()}</span>
+                            </p>
+                          )}
+                        </div>
                       </div>
                     )}
 
@@ -839,56 +917,140 @@ export default function AdminPage() {
                         Lista de Números {!rotationEnabled && "(Solo 1 puede estar activo)"}
                       </h4>
 
-                      {/* Actualizar renderizado para filtrar números vacíos al mostrar */}
-                      {attentionNumbers.filter((n) => n.phone && n.phone.trim() !== "").length === 0 ? (
+                      {rotationEnabled && attentionNumbers.filter((n) => n.phone.trim() !== "").length > 0 && (
+                        <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="relative flex h-3 w-3">
+                                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
+                                <span className="relative inline-flex h-3 w-3 rounded-full bg-green-500"></span>
+                              </div>
+                              <div>
+                                <p className="text-sm font-semibold text-green-300">
+                                  {rotationMode === "clicks" ? "Rotación por Clicks" : "Rotación por Tiempo"}
+                                </p>
+                                <p className="text-xs text-gray-400">
+                                  Número activo: #{currentRotationIndex + 1}
+                                  {attentionNumbers[currentRotationIndex]?.label &&
+                                    ` - ${attentionNumbers[currentRotationIndex].label}`}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              {rotationMode === "clicks" ? (
+                                <>
+                                  <p className="text-2xl font-bold text-green-300">{rotationClickCount}</p>
+                                  <p className="text-xs text-gray-400">de {rotationThreshold} clicks</p>
+                                </>
+                              ) : (
+                                <>
+                                  <p className="text-2xl font-bold text-green-300">{timeRemaining}</p>
+                                  <p className="text-xs text-gray-400">
+                                    {timeRemaining === 1 ? "minuto" : "minutos"} restantes
+                                  </p>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          {rotationMode === "clicks" && (
+                            <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/50">
+                              <div
+                                className="h-full rounded-full bg-gradient-to-r from-green-600 to-emerald-500 transition-all duration-300"
+                                style={{
+                                  width: `${Math.min(100, (rotationClickCount / rotationThreshold) * 100)}%`,
+                                }}
+                              />
+                            </div>
+                          )}
+                          {rotationMode === "time" && (
+                            <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/50">
+                              <div
+                                className="h-full rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 transition-all duration-300"
+                                style={{
+                                  width: `${Math.max(0, (timeRemaining / rotationThreshold) * 100)}%`,
+                                }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {attentionNumbers.filter((n) => n.phone.trim() !== "").length === 0 ? (
                         <div className="rounded-xl border border-dashed border-purple-500/30 bg-purple-500/5 p-8 text-center">
                           <p className="text-sm text-gray-400">No hay números configurados. Agregá uno abajo.</p>
                         </div>
                       ) : (
                         <div className="space-y-2">
                           {attentionNumbers
-                            .filter((n) => n.phone && n.phone.trim() !== "")
-                            .map((number) => (
-                              <div
-                                key={number.id}
-                                className="flex items-center justify-between rounded-lg border border-purple-500/20 bg-black/40 p-4"
-                              >
-                                <div className="flex-1">
-                                  <div className="font-medium text-white">{number.label || "Sin nombre"}</div>
-                                  <div className="text-sm text-gray-400">{number.phone}</div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <Switch
-                                    checked={number.active}
-                                    onCheckedChange={(checked) => {
-                                      if (checked) {
-                                        // Si se activa, desactivar los demás si rotación está desactivada
-                                        if (!rotationEnabled) {
-                                          setAttentionNumbers((prev) =>
-                                            prev.map((n) => ({
-                                              ...n,
-                                              active: n.id === number.id,
-                                            })),
-                                          )
+                            .filter((number) => number.phone.trim() !== "")
+                            .map((number, index) => {
+                              const isCurrentlyActive =
+                                rotationEnabled &&
+                                attentionNumbers.findIndex((n) => n.id === number.id) === currentRotationIndex
+
+                              return (
+                                <div
+                                  key={number.id}
+                                  className={`flex items-center justify-between rounded-lg border p-3 transition-all ${
+                                    isCurrentlyActive
+                                      ? "border-green-500/50 bg-green-500/10 shadow-lg shadow-green-500/20"
+                                      : "border-purple-500/20 bg-black/20"
+                                  }`}
+                                >
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                      {isCurrentlyActive && (
+                                        <span className="flex h-2 w-2">
+                                          <span className="absolute inline-flex h-2 w-2 animate-ping rounded-full bg-green-400 opacity-75"></span>
+                                          <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500"></span>
+                                        </span>
+                                      )}
+                                      <p
+                                        className={`font-medium ${isCurrentlyActive ? "text-green-300" : "text-white"}`}
+                                      >
+                                        {number.label || "Sin nombre"}
+                                      </p>
+                                      {isCurrentlyActive && (
+                                        <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-xs font-semibold text-green-300">
+                                          ACTIVO AHORA
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-sm text-gray-400">{number.phone}</p>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Switch
+                                      checked={number.active}
+                                      onCheckedChange={(checked) => {
+                                        if (checked) {
+                                          // Si se activa, desactivar los demás si rotación está desactivada
+                                          if (!rotationEnabled) {
+                                            setAttentionNumbers((prev) =>
+                                              prev.map((n) => ({
+                                                ...n,
+                                                active: n.id === number.id,
+                                              })),
+                                            )
+                                          } else {
+                                            handleUpdateNumber(number.id, { active: true })
+                                          }
                                         } else {
-                                          handleUpdateNumber(number.id, { active: true })
+                                          handleUpdateNumber(number.id, { active: false })
                                         }
-                                      } else {
-                                        handleUpdateNumber(number.id, { active: false })
-                                      }
-                                    }}
-                                  />
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleDeleteNumber(number.id)}
-                                    className="text-red-400 hover:bg-red-500/10 hover:text-red-300"
-                                  >
-                                    Eliminar
-                                  </Button>
+                                      }}
+                                    />
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleDeleteNumber(number.id)}
+                                      className="text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                                    >
+                                      Eliminar
+                                    </Button>
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              )
+                            })}
                         </div>
                       )}
                     </div>

@@ -34,6 +34,9 @@ export async function POST(request: Request) {
       rotationEnabled,
       rotationMode,
       rotationThreshold,
+      currentRotationIndex,
+      rotationClickCount,
+      rotationLastUpdate,
     } = body
 
     if (!pin || pin !== adminPin) {
@@ -153,6 +156,36 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "El umbral de rotación debe ser mayor a 0" }, { status: 400 })
       }
       updates.rotationThreshold = rotationThreshold
+    }
+
+    if (currentRotationIndex !== undefined) {
+      if (typeof currentRotationIndex !== "number" || currentRotationIndex < 0) {
+        return NextResponse.json(
+          { error: "El índice de rotación debe ser un número mayor o igual a 0" },
+          { status: 400 },
+        )
+      }
+      updates.currentRotationIndex = currentRotationIndex
+    }
+
+    if (rotationClickCount !== undefined) {
+      if (typeof rotationClickCount !== "number" || rotationClickCount < 0) {
+        return NextResponse.json(
+          { error: "El contador de clicks debe ser un número mayor o igual a 0" },
+          { status: 400 },
+        )
+      }
+      updates.rotationClickCount = rotationClickCount
+    }
+
+    if (rotationLastUpdate !== undefined) {
+      if (typeof rotationLastUpdate !== "string") {
+        return NextResponse.json(
+          { error: "La última actualización de rotación debe ser una fecha válida" },
+          { status: 400 },
+        )
+      }
+      updates.lastRotationTime = rotationLastUpdate
     }
 
     const updatedSettings = await updateSettings(updates)
