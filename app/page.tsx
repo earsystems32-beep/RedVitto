@@ -23,9 +23,12 @@ import {
   Download,
   Phone,
   ArrowRight,
+  Hourglass,
 } from "lucide-react"
 import { generateVCF } from "@/lib/vcf-generator"
 import { getNextAttentionNumber } from "@/lib/whatsapp-rotation"
+import { detectOS } from "@/lib/device-detection"
+import { downloadLaCoronaContact } from "@/lib/vcf-generator"
 
 export default function TheCrown() {
   const [step, setStep] = useState(1)
@@ -49,8 +52,8 @@ export default function TheCrown() {
   const [isStepAnimating, setIsStepAnimating] = useState(true)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [transferButtonTimer, setTransferButtonTimer] = useState(30)
-  const [showBonusModal, setShowBonusModal] = useState(false)
-  const [isBonusModalAnimating, setIsBonusModalAnimating] = useState(false)
+  // Removed: const [showBonusModal, setShowBonusModal] = useState(false)
+  // Removed: const [isBonusModalAnimating, setIsBonusModalAnimating] = useState(false)
   const [bonusAccepted, setBonusAccepted] = useState(false)
   const [timerHasStarted, setTimerHasStarted] = useState(false)
 
@@ -77,6 +80,15 @@ export default function TheCrown() {
 
   const [vcfDownloaded, setVcfDownloaded] = useState(false)
   const [conditionsAccepted, setConditionsAccepted] = useState(false)
+  const [canProceed, setCanProceed] = useState(false) // New state for step 5 confirmation
+
+  const [userOS, setUserOS] = useState<"ios" | "android" | "other">("other")
+  const [contactCopied, setContactCopied] = useState(false)
+  const [contactSaved, setContactSaved] = useState(false)
+
+  useEffect(() => {
+    setUserOS(detectOS())
+  }, [])
 
   // Separated config loading to only set timer when not in use
   useEffect(() => {
@@ -191,6 +203,15 @@ export default function TheCrown() {
     }
   }, [step, transferButtonTimer])
 
+  // Update transferButtonTimer logic to enable proceeding
+  useEffect(() => {
+    if (step === 5 && transferButtonTimer === 0) {
+      setCanProceed(true)
+    } else {
+      setCanProceed(false)
+    }
+  }, [step, transferButtonTimer])
+
   const isApodoValid = useCallback((value: string) => {
     return /^[A-Za-zÀ-ÿ\s]+$/.test(value.trim())
   }, [])
@@ -285,12 +306,7 @@ export default function TheCrown() {
         setStep(newStep)
         setIsStepAnimating(true)
 
-        if (newStep === 5 && direction === "forward" && bonusEnabled) {
-          setTimeout(() => {
-            setShowBonusModal(true)
-            setIsBonusModalAnimating(true)
-          }, 300)
-        }
+        // Removed: Bonus modal logic
 
         if (newStep === 5 && direction === "forward") {
           const currentTime = formatDateTime(new Date())
@@ -299,7 +315,7 @@ export default function TheCrown() {
         }
       }, 200)
     },
-    [bonusEnabled, formatDateTime],
+    [formatDateTime],
   )
 
   const handleCreateUser = useCallback(
@@ -425,13 +441,7 @@ Adjunto comprobante.`
     }
   }, [])
 
-  const closeBonusModal = useCallback(() => {
-    setIsBonusModalAnimating(false)
-    setTimeout(() => {
-      setShowBonusModal(false)
-      setBonusAccepted(true)
-    }, 300)
-  }, [])
+  // Removed: closeBonusModal function
 
   const handleDownloadContact = useCallback(() => {
     generateVCF(settings?.support_phone || "543416605903", "TheCrown Atención") // Usar el número de soporte configurado
@@ -448,11 +458,52 @@ Adjunto comprobante.`
     }, 5000)
   }, [settings?.support_phone, generateVCF])
 
+  const handleDownloadLaCorona = useCallback(() => {
+    const currentPhone = getNextAttentionNumber(settings?.phone, settings?.rotationEnabled)
+    console.log("[v0] Descargando contacto La Corona con número:", currentPhone)
+
+    downloadLaCoronaContact(currentPhone)
+    setContactSaved(true)
+    setShowToast(true)
+    setTimeout(() => setShowToast(false), 3000)
+  }, [settings?.phone, settings?.rotationEnabled])
+
+  const handleCopyNumber = useCallback(() => {
+    const currentPhone = getNextAttentionNumber(settings?.phone, settings?.rotationEnabled)
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(currentPhone).then(() => {
+        console.log("[v0] Número copiado:", currentPhone)
+        setContactCopied(true)
+        setContactSaved(true)
+        setShowToast(true)
+        setTimeout(() => setShowToast(false), 2000)
+      })
+    } else {
+      // Fallback para navegadores sin clipboard API
+      const textArea = document.createElement("textarea")
+      textArea.value = currentPhone
+      textArea.style.position = "fixed"
+      textArea.style.opacity = "0"
+      document.body.appendChild(textArea)
+      textArea.select()
+      document.execCommand("copy")
+      document.body.removeChild(textArea)
+
+      setContactCopied(true)
+      setContactSaved(true)
+      setShowToast(true)
+      setTimeout(() => setShowToast(false), 2000)
+    }
+  }, [settings?.phone, settings?.rotationEnabled])
+
   const handleWhatsAppSend = useCallback(() => {
+    const currentPhone = getNextAttentionNumber(settings?.phone, settings?.rotationEnabled)
+
+    console.log("[v0] Enviando mensaje a WhatsApp con número:", currentPhone)
+
     const savedTransferTime = localStorage.getItem("eds_transfer_time") || transferTime
     const currentTransferTime = savedTransferTime || formatDateTime(new Date())
-
-    const attentionNumber = getNextAttentionNumber(phoneNumber, rotationEnabled)
 
     const message = `Hola! Te envío el comprobante de mi carga 📲
 
@@ -464,7 +515,7 @@ Adjunto comprobante.`
 
 Gracias! 🎰👑`
 
-    const whatsappUrl = `https://wa.me/${attentionNumber}?text=${encodeURIComponent(message)}`
+    const whatsappUrl = `https://wa.me/${currentPhone}?text=${encodeURIComponent(message)}`
     window.open(whatsappUrl, "_blank")
 
     // Ir al paso de confirmación
@@ -476,8 +527,8 @@ Gracias! 🎰👑`
     monto,
     titular,
     platformUrl,
-    phoneNumber,
-    rotationEnabled,
+    settings?.phone, // Added for getNextAttentionNumber
+    settings?.rotationEnabled, // Added for getNextAttentionNumber
     changeStep,
     formatDateTime,
   ])
@@ -545,7 +596,7 @@ Gracias! 🎰👑`
   }, [])
 
   useEffect(() => {
-    const savedTime = localStorage.getItem("eds_transfer_time")
+    const savedTime = localStorage.getItem("eds_transfer_time") || transferTime
     if (savedTime && !transferTime) {
       setTransferTime(savedTime)
     }
@@ -559,21 +610,56 @@ Gracias! 🎰👑`
   const supportPhone = settings?.support_phone || "543416605903"
 
   // New state and functions for step 5 confirmation
-  const [canProceed, setCanProceed] = useState(false)
+  // const [canProceed, setCanProceed] = useState(false) moved to top
 
   const handleConfirmTransfer = useCallback(() => {
     if (!canProceed) return // Prevent multiple clicks if not ready
     changeStep(6, "forward") // Move to the next step (step 6)
   }, [canProceed, changeStep])
 
-  // Update transferButtonTimer logic to enable proceeding
-  useEffect(() => {
-    if (step === 5 && transferButtonTimer === 0) {
-      setCanProceed(true)
+  // Removed: useEffect that updated canProceed based on transferButtonTimer
+
+  // Dummy variables for step 7 summary (replace with actual state variables)
+  const amount = montoInput // Assuming montoInput holds the current amount entered
+  const aliasForSummary = alias || "No configurado"
+  const generatedUsername = username // Assuming username state holds the generated username
+
+  const handleSaveContact = async () => {
+    const phone = getNextAttentionNumber(settings?.phone, settings?.rotationEnabled)
+
+    console.log("[v0] Sistema detectado:", userOS)
+    console.log("[v0] Guardando contacto con número:", phone)
+
+    if (userOS === "ios") {
+      // iOS: Descargar archivo VCF
+      downloadLaCoronaContact(phone)
+    } else if (userOS === "android") {
+      // Android: Intentar abrir la app de contactos nativa
+      const contactName = "La Corona"
+      const androidContactURL = `intent://contacts/people/?action=android.intent.action.INSERT&name=${encodeURIComponent(contactName)}&phone=${encodeURIComponent(phone)}#Intent;scheme=content;end`
+
+      // Intentar abrir la app de contactos, si falla, descargar VCF
+      try {
+        window.location.href = androidContactURL
+        // Fallback: después de 1 segundo, ofrecer descarga VCF
+        setTimeout(() => {
+          downloadLaCoronaContact(phone)
+        }, 1000)
+      } catch (error) {
+        console.log("[v0] Error abriendo contactos Android, descargando VCF:", error)
+        downloadLaCoronaContact(phone)
+      }
     } else {
-      setCanProceed(false)
+      // Desktop u otro: Descargar VCF
+      downloadLaCoronaContact(phone)
     }
-  }, [step, transferButtonTimer])
+
+    // Timer oculto de 5 segundos antes de habilitar WhatsApp
+    setTimeout(() => {
+      setContactSaved(true)
+      console.log("[v0] Contacto guardado, habilitando WhatsApp")
+    }, 5000)
+  }
 
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden bg-black">
@@ -594,44 +680,7 @@ Gracias! 🎰👑`
           <div className="fixed inset-0 z-50 bg-transparent" onClick={() => setIsDropdownOpen(false)} />
         )}
 
-        {/* Bonus Modal */}
-        {showBonusModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
-            <div
-              className={`relative w-full max-w-sm bg-black border border-purple-600/30 rounded-2xl shadow-2xl transition-all duration-300 ${
-                isBonusModalAnimating ? "scale-100 opacity-100" : "scale-95 opacity-0"
-              }`}
-            >
-              {/* Fondo cambiado de blanco a negro con borde morado */}
-              <div className="p-8 space-y-6">
-                <div className="flex items-center gap-3 justify-center">
-                  <Gift className="w-10 h-10 text-purple-500" strokeWidth={2} />
-                  <h2 className="text-3xl font-bold text-white">¡Felicitaciones!</h2>
-                </div>
-
-                <div className="space-y-4 text-center">
-                  <div className="bg-purple-950/50 border border-purple-600/30 rounded-xl p-6">
-                    <p className="text-5xl font-bold text-purple-400 mb-2">{bonusPercentage}%</p>
-                    <p className="text-lg text-white font-medium">Adicional en tu primera carga</p>
-                  </div>
-
-                  <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-700">
-                    <p className="text-sm text-gray-300 leading-relaxed">
-                      Recordá, el bono <span className="font-bold text-purple-400">no forma parte del premio</span>.
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={closeBonusModal}
-                  className="w-full h-14 btn-gradient-animated text-white font-semibold rounded-xl transition-all hover:scale-105"
-                >
-                  Aceptar
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Removed: Bonus Modal */}
 
         {/* Modal de Retiros - Updated content */}
         {showInfoModal && (
@@ -771,7 +820,7 @@ Gracias! 🎰👑`
                 <div className="inline-block px-4 py-2 rounded-full bg-purple-950/50 border border-purple-600/40 mb-4">
                   <span className="text-sm font-bold text-purple-400">Paso 1 de 5</span>
                 </div>
-                <Crown className="w-10 h-10 mx-auto text-purple-500 mb-4" strokeWidth={2} />
+
                 <h2 className="text-3xl font-black text-white">Crear Usuario</h2>
                 <p className="text-gray-400 text-sm">Completá tus datos para comenzar</p>
               </div>
@@ -949,7 +998,7 @@ Gracias! 🎰👑`
           </div>
         )}
 
-        {/* PASO 5 - Enviá tu carga (Transferencia) */}
+        {/* PASO 5: Enviá tu carga (Transferencia) */}
         {step === 5 && (
           <div
             className={`transition-all duration-500 ease-out ${
@@ -1016,8 +1065,8 @@ Gracias! 🎰👑`
                     </>
                   ) : (
                     <>
-                      <Clock className="w-5 h-5 animate-spin" strokeWidth={2.5} />
-                      <span>Esperando transferencia...</span>
+                      <Hourglass className="w-5 h-5 animate-spin" strokeWidth={2.5} />
+                      <span>Esperando transferencia</span>
                     </>
                   )}
                 </button>
@@ -1148,39 +1197,53 @@ Gracias! 🎰👑`
                 <div className="inline-block px-4 py-2 rounded-full bg-purple-950/50 border border-purple-600/40 mb-4">
                   <span className="text-sm font-bold text-purple-400">Paso 5 de 5</span>
                 </div>
-                <h2 className="text-3xl font-bold text-white mb-2">Último paso</h2>
-                <p className="text-gray-400 text-sm">Guardá nuestro contacto</p>
+                <h2 className="text-3xl font-bold text-white mb-2 neon-text">Guardá nuestro contacto</h2>
+                <p className="text-gray-400 text-sm">Para concluir la carga debés agendar el teléfono</p>
               </div>
 
               <div className="space-y-4 p-6 rounded-2xl border-2 border-purple-600/50 bg-purple-950/20">
                 <div className="flex items-center gap-3 mb-3">
                   <Phone className="w-8 h-8 text-purple-400" strokeWidth={2} />
-                  <h3 className="text-xl font-bold text-white">Para concluir la carga</h3>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">La Corona</h3>
+                    <p className="text-sm text-purple-300">
+                      {getNextAttentionNumber(settings?.phone, settings?.rotationEnabled)}
+                    </p>
+                  </div>
                 </div>
+
                 <p className="text-base text-gray-300 leading-relaxed">
-                  Debés agendar nuestro teléfono en tu agenda antes de continuar. Esto es{" "}
-                  <strong className="text-white">obligatorio</strong> para completar el proceso.
+                  Guardá este contacto en tu agenda para poder completar tu carga.
                 </p>
 
-                <button
-                  onClick={handleDownloadContact}
-                  className="w-full h-14 btn-gradient-animated text-white font-bold text-base rounded-xl transition-all flex items-center justify-center gap-2 hover:scale-105 mt-4"
-                >
-                  <Download className="w-5 h-5" strokeWidth={2.5} />
-                  <span>Agregar Contacto</span>
-                </button>
-
-                <p className="text-xs text-gray-400 text-center mt-3">
-                  Al hacer clic se descargará el contacto y podrás continuar
-                </p>
+                {!contactSaved ? (
+                  <button
+                    onClick={handleSaveContact}
+                    className="w-full h-14 btn-gradient-animated text-white font-bold text-base rounded-xl transition-all flex items-center justify-center gap-2 hover:scale-105"
+                  >
+                    <Download className="w-5 h-5" strokeWidth={2.5} />
+                    <span>Agregar a mis contactos</span>
+                  </button>
+                ) : (
+                  <div className="flex items-center justify-center gap-2 text-green-400 font-semibold">
+                    <Check className="w-5 h-5" strokeWidth={2.5} />
+                    <span>Contacto guardado</span>
+                  </div>
+                )}
               </div>
 
+              {/* Botón de WhatsApp */}
               <button
                 onClick={handleWhatsAppSend}
-                disabled={!vcfDownloaded} // Ensure VCF was downloaded
-                className="w-full h-14 btn-gradient-animated text-white font-semibold text-base rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105"
+                disabled={!contactSaved}
+                className={`w-full h-14 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${
+                  contactSaved
+                    ? "bg-green-600 text-white hover:bg-green-700 hover:scale-105"
+                    : "bg-gray-800 text-gray-500 cursor-not-allowed"
+                }`}
               >
-                Enviar por WhatsApp
+                <MessageCircle className="w-5 h-5" strokeWidth={2.5} />
+                <span>{contactSaved ? "Enviar comprobante por WhatsApp" : "Guardá el contacto primero"}</span>
               </button>
 
               <button

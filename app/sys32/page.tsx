@@ -786,7 +786,7 @@ export default function AdminPage() {
                       <h2 className="text-2xl font-bold text-white neon-text">Rotación de Números</h2>
                     </div>
 
-                    <div className="p-4 rounded-xl bg-purple-950/30 border border-purple-600/50 mb-4">
+                    <div className="p-6 rounded-2xl border-2 border-purple-600/40 bg-black/30 space-y-4">
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="text-base font-semibold text-white mb-1">Sistema de rotación</h4>
@@ -798,13 +798,13 @@ export default function AdminPage() {
                         </div>
                         <button
                           onClick={() => setRotationEnabled(!rotationEnabled)}
-                          className={`relative w-14 h-8 rounded-full transition-all ${
-                            rotationEnabled ? "bg-purple-600" : "bg-gray-700"
+                          className={`relative w-16 h-9 rounded-full transition-all duration-300 shadow-lg ${
+                            rotationEnabled ? "bg-gradient-to-r from-purple-600 to-purple-500" : "bg-gray-700"
                           }`}
                         >
                           <span
-                            className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                              rotationEnabled ? "translate-x-6" : ""
+                            className={`absolute top-1 w-7 h-7 bg-white rounded-full transition-all duration-300 shadow-md ${
+                              rotationEnabled ? "left-8" : "left-1"
                             }`}
                           />
                         </button>

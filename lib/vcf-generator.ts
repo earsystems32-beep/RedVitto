@@ -60,6 +60,21 @@ export function downloadTheCrownContact(supportPhone: string): void {
 }
 
 /**
+ * Genera y descarga el VCF de "La Corona" con el número dinámico
+ */
+export function downloadLaCoronaContact(phone: string): void {
+  downloadVCF(
+    {
+      name: "La Corona",
+      phone: phone,
+      organization: "La Corona",
+      note: "Contacto oficial para atención y soporte",
+    },
+    "La-Corona.vcf",
+  )
+}
+
+/**
  * Función simplificada para generar y descargar VCF
  * @param phone - Número de teléfono
  * @param name - Nombre del contacto
