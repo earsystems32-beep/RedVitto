@@ -106,16 +106,12 @@ export default function AdminPage() {
   }, [])
 
   const loadRotationNumbers = async () => {
-    console.log("[v0 DEBUG] Iniciando loadRotationNumbers...")
     try {
       const response = await fetch("/api/admin/settings")
       const data = await response.json()
 
-      console.log("[v0 DEBUG] Respuesta de API:", data)
-
       if (data.success && data.settings) {
         const settings = data.settings
-        console.log("[v0 DEBUG] Settings recibidos:", settings)
 
         if (settings.attentionNumbers && Array.isArray(settings.attentionNumbers)) {
           // El backend ya devuelve un array de 9 posiciones
@@ -125,12 +121,6 @@ export default function AdminPage() {
             label: num.name || "",
             active: num.active || false,
           }))
-
-          console.log("[v0 DEBUG] Array de números construido:", numbers)
-          console.log(
-            "[v0 DEBUG] Números con teléfono:",
-            numbers.filter((n) => n.phone.trim() !== ""),
-          )
 
           setAttentionNumbers(numbers)
         } else {
@@ -142,14 +132,13 @@ export default function AdminPage() {
             active: false,
           }))
           setAttentionNumbers(emptyNumbers)
-          console.log("[v0 DEBUG] No hay números configurados, creando array vacío")
         }
 
         setRotationMode(settings.rotationMode || "clicks")
         setRotationThreshold(settings.rotationThreshold || 10)
       }
     } catch (error) {
-      console.error("[v0 DEBUG] Error al cargar números de rotación:", error)
+      console.error("Error al cargar números de rotación:", error)
     }
   }
 
@@ -333,30 +322,26 @@ export default function AdminPage() {
   }
 
   const handleAddNumber = () => {
-    // Buscar la primera posición vacía (índice 0-8)
-    const emptyIndex = attentionNumbers.findIndex((n) => !n.phone || n.phone.trim() === "")
+    const emptyIndex = attentionNumbers.findIndex((num) => !num.phone.trim())
 
     if (emptyIndex === -1) {
-      alert("Ya tienes 9 números configurados (máximo permitido)")
+      alert("Has alcanzado el límite de 9 números")
       return
     }
 
     const newNumber: AttentionNumber = {
-      id: String(emptyIndex + 1), // ID corresponde a columna 1-9
-      phone: sanitizePhone(newNumberPhone.trim()),
-      label: newNumberLabel.trim(),
-      active: false,
+      id: String(emptyIndex + 1),
+      phone: newNumberPhone,
+      label: newNumberLabel,
+      active: true,
     }
 
-    console.log("[v0 DEBUG] Agregando número en posición:", emptyIndex + 1, newNumber)
+    const updated = [...attentionNumbers]
+    updated[emptyIndex] = newNumber
+    setAttentionNumbers(updated)
 
-    // Crear nuevo array con el número en la posición correcta
-    const updatedNumbers = [...attentionNumbers]
-    updatedNumbers[emptyIndex] = newNumber
-
-    setAttentionNumbers(updatedNumbers)
-    setNewNumberPhone("")
     setNewNumberLabel("")
+    setNewNumberPhone("")
     setShowAddNumberForm(false)
   }
 
@@ -365,12 +350,11 @@ export default function AdminPage() {
   }
 
   const handleDeleteNumber = (id: string) => {
-    console.log("[v0 DEBUG] Eliminando número ID:", id)
-
-    // En lugar de eliminar, vaciar la posición
-    setAttentionNumbers((prev) =>
-      prev.map((num) => (num.id === id ? { id: num.id, phone: "", label: "", active: false } : num)),
+    const updated = attentionNumbers.map((num) =>
+      num.id === id ? { ...num, phone: "", label: "", active: false } : num,
     )
+
+    setAttentionNumbers(updated)
   }
 
   const handleSave = async () => {

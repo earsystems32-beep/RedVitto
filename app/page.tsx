@@ -558,17 +558,45 @@ Adjunto comprobante.`
       return
     }
 
-    console.log("[v0 DEBUG] Settings object before getNextAttentionNumber:", {
-      rotationEnabled: settings.rotationEnabled,
-      rotationMode: settings.rotationMode,
-      rotationThreshold: settings.rotationThreshold,
-      currentRotationIndex: settings.currentRotationIndex,
-      rotationClickCount: settings.rotationClickCount,
-      attentionNumbers: settings.attentionNumbers,
-      fullSettings: settings,
-    })
+    const settingsForRotation = {
+      rotation_enabled: settings.rotationEnabled,
+      rotation_mode: settings.rotationMode,
+      rotation_threshold: settings.rotationThreshold,
+      current_rotation_index: settings.currentRotationIndex,
+      rotation_click_count: settings.rotationClickCount,
+      last_rotation_time: settings.lastRotationTime,
+      phone: settings.phone,
+      // Convertir attentionNumbers array a columnas individuales
+      attention_phone_1: settings.attentionNumbers?.[0]?.phone || "",
+      attention_name_1: settings.attentionNumbers?.[0]?.label || "",
+      attention_active_1: settings.attentionNumbers?.[0]?.active || false,
+      attention_phone_2: settings.attentionNumbers?.[1]?.phone || "",
+      attention_name_2: settings.attentionNumbers?.[1]?.label || "",
+      attention_active_2: settings.attentionNumbers?.[1]?.active || false,
+      attention_phone_3: settings.attentionNumbers?.[2]?.phone || "",
+      attention_name_3: settings.attentionNumbers?.[2]?.label || "",
+      attention_active_3: settings.attentionNumbers?.[2]?.active || false,
+      attention_phone_4: settings.attentionNumbers?.[3]?.phone || "",
+      attention_name_4: settings.attentionNumbers?.[3]?.label || "",
+      attention_active_4: settings.attentionNumbers?.[3]?.active || false,
+      attention_phone_5: settings.attentionNumbers?.[4]?.phone || "",
+      attention_name_5: settings.attentionNumbers?.[4]?.label || "",
+      attention_active_5: settings.attentionNumbers?.[4]?.active || false,
+      attention_phone_6: settings.attentionNumbers?.[5]?.phone || "",
+      attention_name_6: settings.attentionNumbers?.[5]?.label || "",
+      attention_active_6: settings.attentionNumbers?.[5]?.active || false,
+      attention_phone_7: settings.attentionNumbers?.[6]?.phone || "",
+      attention_name_7: settings.attentionNumbers?.[6]?.label || "",
+      attention_active_7: settings.attentionNumbers?.[6]?.active || false,
+      attention_phone_8: settings.attentionNumbers?.[7]?.phone || "",
+      attention_name_8: settings.attentionNumbers?.[7]?.label || "",
+      attention_active_8: settings.attentionNumbers?.[7]?.active || false,
+      attention_phone_9: settings.attentionNumbers?.[8]?.phone || "",
+      attention_name_9: settings.attentionNumbers?.[8]?.label || "",
+      attention_active_9: settings.attentionNumbers?.[8]?.active || false,
+    }
 
-    const currentPhone = await getNextAttentionNumber(settings)
+    const currentPhone = await getNextAttentionNumber(settingsForRotation)
 
     console.log("[v0] Enviando mensaje a WhatsApp con número:", currentPhone)
 

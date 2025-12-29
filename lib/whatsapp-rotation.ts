@@ -77,38 +77,24 @@ function getAttentionNumbersFromSettings(settings: SupabaseSettings): AttentionN
  * @returns El número de teléfono a usar
  */
 export async function getNextAttentionNumber(settings: SupabaseSettings): Promise<string> {
-  console.log("[v0 DEBUG] getNextAttentionNumber called with settings:", {
-    rotation_enabled: settings.rotation_enabled,
-    rotation_mode: settings.rotation_mode,
-    rotation_threshold: settings.rotation_threshold,
-    current_rotation_index: settings.current_rotation_index,
-    rotation_click_count: settings.rotation_click_count,
-  })
-
   if (!settings.rotation_enabled) {
-    console.log("[v0 DEBUG] Rotation disabled, using fixed phone")
     return settings.phone || ""
   }
 
   const allNumbers = getAttentionNumbersFromSettings(settings)
   const activeNumbers = allNumbers.filter((n) => n.active)
 
-  console.log("[v0 DEBUG] Active numbers:", activeNumbers.length, activeNumbers)
-
   if (activeNumbers.length === 0) {
-    console.warn("[v0 DEBUG] No active numbers, using fallback")
     return settings.phone || ""
   }
 
   if (activeNumbers.length === 1) {
-    console.log("[v0 DEBUG] Only 1 active number, returning:", activeNumbers[0].phone)
     return activeNumbers[0].phone
   }
 
   let currentIndex = settings.current_rotation_index || 0
 
   if (settings.rotation_mode === "clicks") {
-    console.log("[v0 DEBUG] Rotation mode: CLICKS - Calling API to increment")
     try {
       const response = await fetch("/api/admin/rotation", {
         method: "POST",
@@ -116,19 +102,15 @@ export async function getNextAttentionNumber(settings: SupabaseSettings): Promis
         body: JSON.stringify({ incrementClick: true }),
       })
 
-      console.log("[v0 DEBUG] API Response status:", response.status)
       const data = await response.json()
-      console.log("[v0 DEBUG] API Response data:", data)
 
       if (data.success && data.phone) {
-        console.log(`[v0 DEBUG] Click mode - Selected: ${data.label} (${data.phone})`)
         return data.phone
       }
     } catch (error) {
-      console.error("[v0 DEBUG] Error incrementing click:", error)
+      console.error("Error incrementing click:", error)
     }
 
-    console.log("[v0 DEBUG] Fallback to current index:", currentIndex)
     return activeNumbers[currentIndex].phone
   } else {
     const lastRotation = new Date(settings.last_rotation_time).getTime()
@@ -137,7 +119,6 @@ export async function getNextAttentionNumber(settings: SupabaseSettings): Promis
 
     if (elapsedMinutes >= settings.rotation_threshold) {
       currentIndex = (currentIndex + 1) % activeNumbers.length
-      console.log(`[WhatsApp Rotation] Time threshold reached, rotating to index ${currentIndex}`)
     }
 
     return activeNumbers[currentIndex].phone
