@@ -14,6 +14,7 @@ export interface Settings {
   platformUrl: string
   bonusEnabled: boolean
   bonusPercentage: number
+  rotationEnabled: boolean
 }
 
 function getSupabaseClient() {
@@ -53,6 +54,7 @@ export async function getSettings(): Promise<Settings> {
       platformUrl: data.platform_url || "https://ganamos.sbs",
       bonusEnabled: data.bonus_enabled ?? true,
       bonusPercentage: data.bonus_percentage ?? 25,
+      rotationEnabled: data.rotation_enabled ?? false,
     }
   } catch (error) {
     console.error("[Settings] getSettings error:", error)
@@ -75,6 +77,7 @@ export async function updateSettings(updates: Partial<Settings>): Promise<Settin
     if (updates.platformUrl !== undefined) dbUpdates.platform_url = updates.platformUrl
     if (updates.bonusEnabled !== undefined) dbUpdates.bonus_enabled = updates.bonusEnabled
     if (updates.bonusPercentage !== undefined) dbUpdates.bonus_percentage = updates.bonusPercentage
+    if (updates.rotationEnabled !== undefined) dbUpdates.rotation_enabled = updates.rotationEnabled
 
     const { data, error } = await supabase.from("settings").update(dbUpdates).eq("id", 1).select().single()
 
@@ -98,6 +101,7 @@ export async function updateSettings(updates: Partial<Settings>): Promise<Settin
       platformUrl: data.platform_url || "https://ganamos.sbs",
       bonusEnabled: data.bonus_enabled ?? true,
       bonusPercentage: data.bonus_percentage ?? 25,
+      rotationEnabled: data.rotation_enabled ?? false,
     }
   } catch (error) {
     console.error("[Settings] updateSettings error:", error)

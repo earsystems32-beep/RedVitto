@@ -11,16 +11,21 @@ import {
   ArrowLeft,
   AlertCircle,
   X,
-  Hourglass,
   Gift,
   Shield,
   Users,
   Wallet,
   Clock,
   TrendingUp,
-  Home,
   Trophy,
+  ChevronRight,
+  ChevronLeft,
+  Download,
+  Phone,
+  ArrowRight,
 } from "lucide-react"
+import { generateVCF } from "@/lib/vcf-generator"
+import { getNextAttentionNumber } from "@/lib/whatsapp-rotation"
 
 export default function TheCrown() {
   const [step, setStep] = useState(1)
@@ -65,10 +70,12 @@ export default function TheCrown() {
 
   const [bonusEnabled, setBonusEnabled] = useState(true)
   const [bonusPercentage, setBonusPercentage] = useState(25)
+  const [rotationEnabled, setRotationEnabled] = useState(false)
 
   // Assume settings is available after fetching
   const [settings, setSettings] = useState<any>(null) // Added state for settings
 
+  const [vcfDownloaded, setVcfDownloaded] = useState(false)
   const [conditionsAccepted, setConditionsAccepted] = useState(false)
 
   // Separated config loading to only set timer when not in use
@@ -100,6 +107,7 @@ export default function TheCrown() {
             setPlatformUrl(data.settings.platformUrl || "https://ganamos.sbs")
             setBonusEnabled(data.settings.bonusEnabled ?? true)
             setBonusPercentage(data.settings.bonusPercentage ?? 25)
+            setRotationEnabled(data.settings.rotationEnabled ?? false)
           }
         }
       } catch (error) {
@@ -168,8 +176,7 @@ export default function TheCrown() {
 
   // Countdown timer runs only when conditions are met
   useEffect(() => {
-    if (step === 5 && bonusAccepted && transferButtonTimer > 0) {
-      // This step number will change
+    if (step === 5 && transferButtonTimer > 0) {
       const interval = setInterval(() => {
         setTransferButtonTimer((prev) => {
           if (prev <= 1) {
@@ -182,7 +189,7 @@ export default function TheCrown() {
 
       return () => clearInterval(interval)
     }
-  }, [step, bonusAccepted])
+  }, [step, transferButtonTimer])
 
   const isApodoValid = useCallback((value: string) => {
     return /^[A-Za-zÀ-ÿ\s]+$/.test(value.trim())
@@ -271,6 +278,30 @@ export default function TheCrown() {
     }
   }, [])
 
+  const changeStep = useCallback(
+    (newStep: number, direction: "forward" | "back" = "forward") => {
+      setIsStepAnimating(false)
+      setTimeout(() => {
+        setStep(newStep)
+        setIsStepAnimating(true)
+
+        if (newStep === 5 && direction === "forward" && bonusEnabled) {
+          setTimeout(() => {
+            setShowBonusModal(true)
+            setIsBonusModalAnimating(true)
+          }, 300)
+        }
+
+        if (newStep === 5 && direction === "forward") {
+          const currentTime = formatDateTime(new Date())
+          setTransferTime(currentTime)
+          localStorage.setItem("eds_transfer_time", currentTime)
+        }
+      }, 200)
+    },
+    [bonusEnabled, formatDateTime],
+  )
+
   const handleCreateUser = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault()
@@ -283,18 +314,18 @@ export default function TheCrown() {
         alert("Ingresá 4 dígitos.")
         return
       }
-      // Plataforma ya es fija, no necesita validación aquí
 
       const apodoSan = sanitizeName(apodo)
       const apodoCapitalized = apodoSan.charAt(0).toUpperCase() + apodoSan.slice(1)
       const generatedUser = `${apodoCapitalized}${digitos}00g`
       setUsuario(generatedUser)
-      setUsername(generatedUser) // Set username state for step 3
+      setUsername(generatedUser)
       localStorage.setItem("eds_username", generatedUser)
       localStorage.setItem("eds_platform", plataforma)
-      setStep(3) // Directly set step instead of calling changeStep
+
+      changeStep(4, "forward")
     },
-    [apodo, digitos, plataforma, isApodoValid, isDigitosValid, sanitizeName],
+    [apodo, digitos, plataforma, isApodoValid, isDigitosValid, sanitizeName, changeStep],
   )
 
   const copyToClipboard = useCallback((text: string) => {
@@ -383,29 +414,8 @@ Adjunto comprobante.`
 
   const isSoporteButtonEnabled = titular.trim().length > 0 && monto.trim().length > 0
 
-  const changeStep = useCallback(
-    (newStep: number, direction: "forward" | "back" = "forward") => {
-      setIsStepAnimating(false)
-      setTimeout(() => {
-        setStep(newStep)
-        setIsStepAnimating(true)
-
-        if (newStep === 5 && direction === "forward" && bonusEnabled) {
-          setTimeout(() => {
-            setShowBonusModal(true)
-            setIsBonusModalAnimating(true)
-          }, 300)
-        }
-
-        if (newStep === 5 && direction === "forward") {
-          const currentTime = formatDateTime(new Date())
-          setTransferTime(currentTime)
-          localStorage.setItem("eds_transfer_time", currentTime)
-        }
-      }, 200)
-    },
-    [bonusEnabled, formatDateTime],
-  )
+  // This function was moved up and modified to be called changeStep
+  // const changeStep = useCallback(...)
 
   const handleInputBlur = useCallback(() => {
     if (typeof window !== "undefined") {
@@ -423,11 +433,54 @@ Adjunto comprobante.`
     }, 300)
   }, [])
 
+  const handleDownloadContact = useCallback(() => {
+    generateVCF(settings?.support_phone || "543416605903", "TheCrown Atención") // Usar el número de soporte configurado
+    setVcfDownloaded(true)
+    setShowToast(true)
+    setTimeout(() => setShowToast(false), 3000)
+
+    setTimeout(() => {
+      // Puede avanzar aunque no haya guardado realmente
+      console.log("[v0] Timer de 5 segundos completado, usuario puede continuar")
+      // You might want to automatically trigger changeStep(8, "forward") here
+      // or enable a "Continue" button, depending on the desired UX.
+      // For now, just logging and enabling the possibility to proceed.
+    }, 5000)
+  }, [settings?.support_phone, generateVCF])
+
   const handleWhatsAppSend = useCallback(() => {
-    // Lógica para enviar mensaje de WhatsApp con los datos del paso 5. This will now be step 6.
-    handleWhatsApp() // Reutilizamos la lógica de handleWhatsApp
-    setStep(7) // Cambiar a paso 7 que ahora será confirmación
-  }, [handleWhatsApp])
+    const savedTransferTime = localStorage.getItem("eds_transfer_time") || transferTime
+    const currentTransferTime = savedTransferTime || formatDateTime(new Date())
+
+    const attentionNumber = getNextAttentionNumber(phoneNumber, rotationEnabled)
+
+    const message = `Hola! Te envío el comprobante de mi carga 📲
+
+✅ *Usuario:* ${usuario || username}
+💰 *Monto:* $${monto}
+👤 *Titular:* ${titular}
+🕒 *Hora de transferencia:* ${currentTransferTime}
+🎮 *Quiero jug4r en:* ${platformUrl}
+
+Gracias! 🎰👑`
+
+    const whatsappUrl = `https://wa.me/${attentionNumber}?text=${encodeURIComponent(message)}`
+    window.open(whatsappUrl, "_blank")
+
+    // Ir al paso de confirmación
+    changeStep(7, "forward")
+  }, [
+    transferTime,
+    usuario,
+    username,
+    monto,
+    titular,
+    platformUrl,
+    phoneNumber,
+    rotationEnabled,
+    changeStep,
+    formatDateTime,
+  ])
 
   // This function seems redundant with handleWhatsAppSend now, but kept for potential future use
   const handleContinueTransfer = useCallback(() => {
@@ -501,6 +554,26 @@ Adjunto comprobante.`
   const handleCopyAlias = useCallback(() => {
     copyToClipboard(paymentData || alias || "No configurado")
   }, [paymentData, alias, copyToClipboard])
+
+  // Mocking supportPhone for handleDownloadContact
+  const supportPhone = settings?.support_phone || "543416605903"
+
+  // New state and functions for step 5 confirmation
+  const [canProceed, setCanProceed] = useState(false)
+
+  const handleConfirmTransfer = useCallback(() => {
+    if (!canProceed) return // Prevent multiple clicks if not ready
+    changeStep(6, "forward") // Move to the next step (step 6)
+  }, [canProceed, changeStep])
+
+  // Update transferButtonTimer logic to enable proceeding
+  useEffect(() => {
+    if (step === 5 && transferButtonTimer === 0) {
+      setCanProceed(true)
+    } else {
+      setCanProceed(false)
+    }
+  }, [step, transferButtonTimer])
 
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden bg-black">
@@ -695,6 +768,9 @@ Adjunto comprobante.`
           >
             <div className={`space-y-8 transition-all duration-500 ${isStepAnimating ? "opacity-100" : "opacity-0"}`}>
               <div className="text-center space-y-2">
+                <div className="inline-block px-4 py-2 rounded-full bg-purple-950/50 border border-purple-600/40 mb-4">
+                  <span className="text-sm font-bold text-purple-400">Paso 1 de 5</span>
+                </div>
                 <Crown className="w-10 h-10 mx-auto text-purple-500 mb-4" strokeWidth={2} />
                 <h2 className="text-3xl font-black text-white">Crear Usuario</h2>
                 <p className="text-gray-400 text-sm">Completá tus datos para comenzar</p>
@@ -745,7 +821,7 @@ Adjunto comprobante.`
 
                 <div className="flex flex-col gap-3">
                   <button
-                    onClick={() => changeStep(3, "forward")}
+                    type="submit" // Changed to type="submit" to use form's onSubmit
                     disabled={!isFormValid}
                     className={`w-full h-14 font-semibold text-base rounded-xl transition-all ${
                       isFormValid
@@ -769,406 +845,351 @@ Adjunto comprobante.`
           </div>
         )}
 
-        {/* PASO 3 - Usuario Creado SIN CARD */}
-        {step === 3 && (
-          <div
-            className={`transition-all duration-500 ease-out ${
-              isStepAnimating ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-8 scale-90"
-            }`}
-            style={{
-              animation: isStepAnimating ? "fadeInZoom 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
-            }}
-          >
-            <div className="space-y-10">
-              <div className="space-y-6 text-center">
-                <div className="flex justify-center">
-                  <div className="w-16 h-16 rounded-full bg-purple-600 flex items-center justify-center">
-                    <Check className="w-10 h-10 text-white" strokeWidth={2} />
-                  </div>
-                </div>
-                <h2 className="text-4xl font-bold text-white">Usuario Creado</h2>
-                <p className="text-base text-gray-400">Tu usuario fue creado con éxito</p>
-              </div>
+        {/* Paso 3 eliminado completamente */}
 
-              <div className="space-y-6">
-                <div className="space-y-3">
-                  <Label className="text-base font-medium text-gray-400">Usuario</Label>
-                  <div className="h-14 px-4 rounded-xl bg-gray-900 border border-gray-800 flex items-center">
-                    <span className="text-lg font-mono text-purple-500 font-semibold">{usuario}</span>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <Label className="text-base font-medium text-gray-400">Contraseña</Label>
-                  <div className="h-14 px-4 rounded-xl bg-gray-900 border border-gray-800 flex items-center">
-                    <span className="text-lg font-mono text-purple-500 font-semibold">{password}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4 pt-4">
-                <button
-                  onClick={() => {
-                    setConditionsAccepted(false) // Resetear checkbox
-                    changeStep(4, "forward") // Changed step to 4
-                  }}
-                  className="w-full h-14 btn-gradient-animated text-white font-semibold text-base rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(167,139,250,0.6)]"
-                >
-                  Ir a pagar
-                </button>
-
-                <button
-                  onClick={() => changeStep(2, "back")}
-                  className="w-full h-14 text-base border border-gray-800 hover:border-purple-600 transition-all text-white font-medium rounded-xl hover:scale-105"
-                >
-                  <ArrowLeft className="w-5 h-5 inline mr-2" strokeWidth={2} />
-                  Atrás
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* PASO 4 - Confirmación de Condiciones (insertado después del paso 3) */}
+        {/* PASO 4: Confirmar condiciones y bono integrado */}
         {step === 4 && (
           <div
-            className="w-full max-w-lg mx-auto"
-            style={{
-              animation: isStepAnimating ? "slideInFromRight 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
-            }}
+            className={`transition-all duration-500 ease-out ${
+              isStepAnimating ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+            }`}
           >
-            <div className={`space-y-6 transition-all duration-500 ${isStepAnimating ? "opacity-100" : "opacity-0"}`}>
-              {/* Header */}
-              <div className="text-center space-y-3">
-                <Crown className="w-10 h-10 mx-auto text-purple-500 mb-4" strokeWidth={2} />
-                <h2 className="text-3xl font-black text-white">Antes de continuar</h2>
-                <p className="text-gray-400 text-sm">
-                  Para proceder con la carga, por favor revisá y aceptá las condiciones.
-                </p>
+            <div className="space-y-6">
+              <div className="text-center">
+                <div className="inline-block px-4 py-2 rounded-full bg-purple-950/50 border border-purple-600/40 mb-4">
+                  <span className="text-sm font-bold text-purple-400">Paso 2 de 5</span>
+                </div>
+                <h2 className="text-3xl font-bold text-white mb-2">Antes de continuar</h2>
+                <p className="text-gray-400 text-sm">Conocé los límites y condiciones</p>
               </div>
 
-              <div className="bg-gray-900/50 border border-purple-600/30 rounded-xl p-6 space-y-4">
-                {/* Límite de premios */}
-                <div className="space-y-2">
-                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                    <Trophy className="w-5 h-5 text-purple-500" strokeWidth={2} />
-                    Límite de premios por jugada
-                  </h3>
-                  <p className="text-sm text-gray-300 leading-relaxed">
-                    Cada jugada tiene un premio máximo acreditable de{" "}
-                    <span className="font-bold text-white">$1.000.000</span>. Si un resultado supera ese valor, se
-                    acreditará el tope máximo permitido por jugada.
-                  </p>
+              <div className="space-y-4 p-6 rounded-2xl border border-purple-600/30 bg-black/40">
+                {/* Sección de límites */}
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <Trophy className="w-6 h-6 text-purple-400 flex-shrink-0 mt-1" strokeWidth={2} />
+                    <div className="flex-1">
+                      <h3 className="font-bold text-white text-lg mb-1">Premio máximo por jugada</h3>
+                      <p className="text-gray-300 text-base">$1.000.000</p>
+                    </div>
+                  </div>
+
+                  <div className="h-px bg-purple-600/20" />
+
+                  <div className="flex items-start gap-3">
+                    <Wallet className="w-6 h-6 text-purple-400 flex-shrink-0 mt-1" strokeWidth={2} />
+                    <div className="flex-1">
+                      <h3 className="font-bold text-white text-lg mb-2">Límites de retiro</h3>
+                      <ul className="space-y-1.5 text-gray-300 text-base">
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                          Máximo 2 retiros por día
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                          $125.000 por retiro
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                          Total diario: $250.000
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  {bonusEnabled && bonusPercentage > 0 && (
+                    <>
+                      <div className="h-px bg-purple-600/20" />
+                      <div className="flex items-start gap-3">
+                        <Gift className="w-6 h-6 text-purple-400 flex-shrink-0 mt-1" strokeWidth={2} />
+                        <div className="flex-1">
+                          <h3 className="font-bold text-white text-lg mb-1">Bono especial</h3>
+                          <p className="text-gray-300 text-base">
+                            Recibís un <strong className="text-purple-400">{bonusPercentage}% adicional</strong> en tu
+                            primera carga
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
 
-                {/* Separador */}
-                <div className="border-t border-gray-800"></div>
+                <div className="h-px bg-purple-600/20 mt-4" />
 
-                {/* Límites de retiro */}
-                <div className="space-y-3">
-                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                    <Wallet className="w-5 h-5 text-purple-500" strokeWidth={2} />
-                    Límites de retiro diarios
-                  </h3>
-                  <ul className="space-y-2 text-sm text-gray-300">
-                    <li className="flex items-start gap-2">
-                      <span className="text-purple-500 mt-0.5">•</span>
-                      <span>
-                        Hasta <span className="font-bold text-white">2 retiros</span> por día
-                      </span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-purple-500 mt-0.5">•</span>
-                      <span>
-                        <span className="font-bold text-white">$125.000</span> por retiro
-                      </span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-purple-500 mt-0.5">•</span>
-                      <span>
-                        Máximo <span className="font-bold text-white">$250.000</span> diarios
-                      </span>
-                    </li>
-                  </ul>
-                </div>
-
-                {/* Separador */}
-                <div className="border-t border-gray-800"></div>
-
-                {/* Mensaje de confirmación */}
-                <p className="text-sm text-gray-400 text-center italic">
-                  Al continuar, confirmás que leíste y aceptás estas condiciones.
-                </p>
-
-                {/* Checkbox integrado */}
-                <div className="flex items-start gap-3 p-3 bg-black/30 border border-gray-800 rounded-lg">
+                <label className="flex items-start gap-3 cursor-pointer group p-4 rounded-xl hover:bg-purple-950/20 transition-all">
                   <input
                     type="checkbox"
-                    id="accept-conditions"
                     checked={conditionsAccepted}
                     onChange={(e) => setConditionsAccepted(e.target.checked)}
-                    className="mt-1 w-5 h-5 rounded border-gray-700 text-purple-600 focus:ring-purple-600 focus:ring-2 cursor-pointer"
+                    className="mt-1 w-5 h-5 rounded border-purple-600/40 bg-black/50 text-purple-600 focus:ring-purple-600 focus:ring-offset-0"
                   />
-                  <label htmlFor="accept-conditions" className="text-base text-gray-300 cursor-pointer select-none">
-                    Acepto las condiciones
-                  </label>
-                </div>
+                  <span className="text-sm text-gray-300 group-hover:text-white transition-colors">
+                    Acepto los términos y condiciones
+                  </span>
+                </label>
 
-                {/* Botón Continuar integrado */}
+                {/* Botón continuar dentro */}
                 <button
-                  onClick={() => changeStep(5, "forward")} // Changed step to 5
+                  onClick={() => changeStep(5, "forward")}
                   disabled={!conditionsAccepted}
-                  className={`w-full h-14 font-semibold text-base rounded-xl transition-all ${
-                    conditionsAccepted
-                      ? "btn-gradient-animated text-white hover:scale-105 hover:shadow-[0_0_40px_rgba(167,139,250,0.6)]"
-                      : "bg-gray-900 text-gray-600 cursor-not-allowed border border-gray-800"
-                  }`}
+                  className="w-full h-14 btn-gradient-animated text-white font-semibold text-base rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 mt-4"
                 >
                   Continuar
                 </button>
               </div>
 
-              {/* Botón Volver fuera de la tarjeta */}
               <button
-                onClick={() => changeStep(3, "back")}
-                className="w-full h-14 text-base border border-gray-800 hover:border-purple-600 transition-all text-white font-medium rounded-xl hover:scale-105"
+                onClick={() => changeStep(2, "back")}
+                className="w-full h-12 text-base border border-gray-800 hover:border-purple-600 transition-all text-white font-medium rounded-xl"
               >
                 <ArrowLeft className="w-5 h-5 inline mr-2" strokeWidth={2} />
                 Volver
               </button>
-
-              {/* Nota informativa al pie */}
-              <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
-                <AlertCircle className="w-4 h-4" strokeWidth={2} />
-                <span>Estas condiciones aplican a todas las operaciones dentro de la plataforma.</span>
-              </div>
             </div>
           </div>
         )}
 
-        {/* PASO 5 - Enviá tu carga (anteriormente paso 4) */}
+        {/* PASO 5 - Enviá tu carga (Transferencia) */}
         {step === 5 && (
           <div
-            className="w-full max-w-md mx-auto"
-            style={{
-              animation: isStepAnimating ? "slideInFromRight 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
-            }}
+            className={`transition-all duration-500 ease-out ${
+              isStepAnimating ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+            }`}
           >
-            <div className={`space-y-8 transition-all duration-500 ${isStepAnimating ? "opacity-100" : "opacity-0"}`}>
-              <div className="text-center space-y-2">
-                <Crown className="w-10 h-10 mx-auto text-purple-500 mb-4" strokeWidth={2} />
-                <h2 className="text-3xl font-black text-white">Enviá tu carga</h2>
-                <p className="text-gray-400 text-sm">Hacé la transferencia y confirmala</p>
+            <div className="space-y-6">
+              <div className="text-center">
+                <div className="inline-block px-4 py-2 rounded-full bg-purple-950/50 border border-purple-600/40 mb-4">
+                  <span className="text-sm font-bold text-purple-400">Paso 3 de 5</span>
+                </div>
+                <h2 className="text-3xl font-bold text-white mb-2">Enviá tu carga</h2>
+                <p className="text-gray-400 text-sm">Realizá la transferencia</p>
               </div>
 
-              <div className="space-y-6">
-                <div className="p-4 bg-gray-900 border border-gray-800 rounded-xl space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-400">Carga mínima:</span>
-                    <span className="text-lg font-bold text-white">${formatCurrency(minAmount)}</span>
+              <div className="space-y-4 p-6 rounded-2xl border border-purple-600/30 bg-black/40">
+                <div className="flex items-center justify-between">
+                  <span className="text-base text-gray-400">Carga mínima</span>
+                  <span className="text-lg font-bold text-white">${formatCurrency(minAmount)}</span>
+                </div>
+
+                <div className="h-px bg-purple-600/20" />
+
+                <div className="space-y-3">
+                  <Label className="text-lg text-white font-bold text-center block">Alias</Label>
+                  <div className="w-full text-center p-4 rounded-xl bg-purple-950/30 border-2 border-purple-600/50">
+                    <p className="text-3xl font-black text-purple-400 tracking-wide">{alias || "No configurado"}</p>
                   </div>
-                  <div className="flex flex-col items-center gap-3 pt-4">
-                    <span className="text-base text-gray-400">Alias</span>
-                    <span className="text-2xl font-bold text-purple-400">
-                      {paymentData || alias || "No configurado"}
-                    </span>
-                    <button
-                      onClick={handleCopyAlias}
-                      className="btn-gradient-animated px-6 py-2 text-white rounded-lg transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(167,139,250,0.5)] flex items-center gap-2"
-                    >
-                      {copied ? (
-                        <>
-                          <Check className="w-4 h-4" strokeWidth={2} />
-                          <span>Copiado</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-4 h-4" strokeWidth={2} />
-                          <span>Copiar</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(alias)
+                      setCopiedAlias(true)
+                      setTimeout(() => setCopiedAlias(false), 2000)
+                    }}
+                    className="w-full btn-gradient-animated px-6 py-3 rounded-xl text-white font-semibold flex items-center justify-center gap-2 hover:scale-105 transition-all"
+                  >
+                    {copiedAlias ? (
+                      <>
+                        <Check className="w-5 h-5" strokeWidth={2.5} />
+                        <span>Copiado</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-5 h-5" strokeWidth={2.5} />
+                        <span>Copiar Alias</span>
+                      </>
+                    )}
+                  </button>
                 </div>
 
                 <button
-                  onClick={() => changeStep(6, "forward")} // Changed step to 6
-                  disabled={transferButtonTimer > 0}
-                  className={`w-full h-14 font-semibold text-base rounded-xl flex items-center justify-center gap-3 transition-all ${
-                    transferButtonTimer > 0
-                      ? "bg-gray-900 text-gray-500 cursor-not-allowed"
-                      : "btn-gradient-animated text-white hover:scale-105 hover:shadow-[0_0_40px_rgba(167,139,250,0.6)]"
+                  onClick={handleConfirmTransfer}
+                  disabled={!canProceed}
+                  className={`w-full h-14 rounded-xl font-semibold text-base transition-all flex items-center justify-center gap-2 ${
+                    canProceed
+                      ? "btn-gradient-animated text-white hover:scale-105"
+                      : "bg-gray-800 text-gray-500 cursor-not-allowed"
                   }`}
                 >
-                  {transferButtonTimer > 0 ? (
+                  {canProceed ? (
                     <>
-                      <Hourglass className="w-5 h-5 animate-spin" strokeWidth={2} />
-                      <span>Esperando transferencia</span>
+                      <ArrowRight className="w-5 h-5" strokeWidth={2.5} />
+                      <span>Transferí y continuá</span>
                     </>
                   ) : (
-                    <span>Ya envié el dinero</span>
+                    <>
+                      <Clock className="w-5 h-5 animate-spin" strokeWidth={2.5} />
+                      <span>Esperando transferencia...</span>
+                    </>
                   )}
                 </button>
               </div>
+
+              <button
+                onClick={() => changeStep(4, "back")}
+                className="w-full h-12 text-base border border-gray-800 hover:border-purple-600 transition-all text-white font-medium rounded-xl"
+              >
+                <ArrowLeft className="w-5 h-5 inline mr-2" strokeWidth={2} />
+                Volver
+              </button>
             </div>
           </div>
         )}
 
-        {/* PASO 6 - Últimos detalles (anteriormente paso 5) */}
+        {/* PASO 6: Últimos detalles */}
         {step === 6 && (
           <div
-            className="w-full max-w-md mx-auto"
-            style={{
-              animation: isStepAnimating ? "slideInFromRight 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
-            }}
+            className={`transition-all duration-500 ease-out ${
+              isStepAnimating ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+            }`}
           >
-            <div className={`space-y-8 transition-all duration-500 ${isStepAnimating ? "opacity-100" : "opacity-0"}`}>
-              <div className="text-center space-y-2">
-                <Crown className="w-10 h-10 mx-auto text-purple-500 mb-4" strokeWidth={2} />
-                <h2 className="text-3xl font-bold text-white">Últimos detalles</h2>
-                <p className="text-gray-400 text-sm">Completá los datos de la transferencia</p>
+            <div className="space-y-6">
+              <div className="text-center">
+                <div className="inline-block px-4 py-2 rounded-full bg-purple-950/50 border border-purple-600/40 mb-4">
+                  <span className="text-sm font-bold text-purple-400">Paso 4 de 5</span>
+                </div>
+                <h2 className="text-3xl font-bold text-white mb-2">Últimos detalles</h2>
+                <p className="text-gray-400 text-sm">Completá la información de la transferencia</p>
               </div>
 
-              <div className="p-4 bg-purple-950/20 border border-purple-800/30 rounded-xl">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" strokeWidth={2} />
-                  <p className="text-sm text-gray-300">
-                    <span className="font-semibold text-purple-300">Importante:</span> Asegurate de que el titular y el
-                    monto coincidan exactamente con los datos de tu transferencia para que tu carga se acredite más
-                    rápido.
+              {/* Advertencia de coincidencia de datos */}
+              <div className="p-4 rounded-xl bg-purple-950/20 border border-purple-600/40 flex items-start gap-3">
+                <AlertCircle className="w-6 h-6 text-purple-400 flex-shrink-0 mt-0.5" strokeWidth={2} />
+                <div className="flex-1">
+                  <p className="text-sm text-purple-200 leading-relaxed">
+                    <strong className="font-semibold">Importante:</strong> Los datos deben coincidir exactamente con tu
+                    transferencia para una acreditación más rápida.
                   </p>
                 </div>
               </div>
 
-              <div className="space-y-6">
-                <div className="space-y-4">
-                  <div>
-                    <label htmlFor="titular-step5" className="block text-base font-medium text-gray-300 mb-2">
-                      Titular de la cuenta
-                    </label>
-                    <input
-                      id="titular-step5"
-                      type="text"
-                      value={titular}
-                      onChange={(e) => {
-                        const value = e.target.value
-                        if (/^[A-Za-zÀ-ÿ\s]*$/.test(value)) {
-                          setTitular(value)
-                          setTitularError("")
-                        }
-                      }}
-                      onBlur={() => {
-                        if (titular.trim() && !/^[A-Za-zÀ-ÿ\s]+$/.test(titular.trim())) {
-                          setTitularError("Solo se permiten letras")
-                        } else {
-                          setTitularError("")
-                        }
-                      }}
-                      placeholder="Nombre completo del titular"
-                      className="w-full h-14 px-4 bg-gray-900 border border-gray-800 rounded-xl text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-600 transition-colors"
-                    />
-                    {titularError && <p className="text-red-500 text-xs mt-1">{titularError}</p>}
-                  </div>
-
-                  <div>
-                    <label htmlFor="monto-step5" className="block text-base font-medium text-gray-300 mb-2">
-                      Monto a depositado
-                    </label>
-                    <input
-                      id="monto-step5"
-                      type="text"
-                      value={montoInput} // Use montoInput for the typed value
-                      onChange={handleMontoChange}
-                      placeholder={`Mínimo $${formatCurrency(minAmount)}`}
-                      className="w-full h-14 px-4 bg-gray-900 border border-gray-800 rounded-xl text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-600 transition-colors"
-                    />
-                    {montoError && <p className="text-red-500 text-xs mt-1">{montoError}</p>}
-                  </div>
+              <div className="space-y-4">
+                <div className="space-y-3">
+                  <Label htmlFor="titular" className="text-base text-white font-medium">
+                    Titular de la cuenta
+                  </Label>
+                  <Input
+                    id="titular"
+                    type="text"
+                    value={titular}
+                    onChange={(e) => {
+                      setTitular(e.target.value)
+                      if (titularError) setTitularError("")
+                    }}
+                    placeholder="Nombre completo del titular"
+                    className={`h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white placeholder:text-gray-500 rounded-xl ${
+                      titularError ? "border-red-500" : ""
+                    }`}
+                  />
+                  {titularError && <p className="text-sm text-red-400 flex items-center gap-2">{titularError}</p>}
                 </div>
 
-                <button
-                  onClick={handleWhatsAppSend}
-                  disabled={!isSoporteButtonEnabled}
-                  className={`w-full h-14 font-semibold text-base rounded-xl flex items-center justify-center gap-3 transition-all ${
-                    !isSoporteButtonEnabled
-                      ? "bg-gray-900 text-gray-600 cursor-not-allowed border border-gray-800"
-                      : "btn-gradient-animated text-white hover:scale-105 hover:shadow-[0_0_40px_rgba(167,139,250,0.6)]"
-                  }`}
-                >
-                  <MessageCircle className="w-5 h-5" strokeWidth={2} />
-                  <span>{!isSoporteButtonEnabled ? "Completar los campos" : "Acreditar mi carga"}</span>
-                </button>
-
-                <button
-                  onClick={() => changeStep(5, "back")} // Changed step to 5
-                  className="w-full h-14 text-base border border-gray-800 hover:border-purple-600 transition-all text-white font-medium rounded-xl hover:scale-105"
-                >
-                  Volver
-                </button>
+                <div className="space-y-3">
+                  <Label htmlFor="monto" className="text-base text-white font-medium">
+                    Monto depositado
+                  </Label>
+                  <Input
+                    id="monto"
+                    type="text" // Changed to text to handle comma input correctly, validation happens on change
+                    inputMode="decimal" // Use decimal for currency input
+                    value={montoInput} // Bind to montoInput for real-time display
+                    onChange={(e) => {
+                      handleMontoChange(e) // Use the dedicated handler
+                      if (montoError) setMontoError("")
+                    }}
+                    placeholder="Ingresá el monto"
+                    className={`h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white placeholder:text-gray-500 rounded-xl ${
+                      montoError ? "border-red-500" : ""
+                    }`}
+                  />
+                  {montoError && <p className="text-sm text-red-400 flex items-center gap-2">{montoError}</p>}
+                </div>
               </div>
+
+              <button
+                onClick={() => {
+                  if (!titular.trim()) {
+                    setTitularError("Ingresá el titular de la cuenta")
+                    return
+                  }
+                  // Re-validate monto based on montoInput for confirmation
+                  const cleanedValue = montoInput.replace(/,/g, ".")
+                  const num = Number.parseFloat(cleanedValue)
+                  if (!num || num < minAmount) {
+                    setMontoError(`El monto mínimo es $${formatCurrency(minAmount)}`)
+                    return
+                  }
+                  changeStep(7, "forward")
+                }}
+                className="w-full h-14 btn-gradient-animated text-white font-semibold text-base rounded-xl transition-all flex items-center justify-center gap-2 hover:scale-105 hover:shadow-[0_0_40px_rgba(167,139,250,0.6)]"
+              >
+                <span>Continuar</span>
+                <ChevronRight className="w-5 h-5" strokeWidth={2.5} />
+              </button>
+
+              <button
+                onClick={() => changeStep(5, "back")}
+                className="w-full py-3 text-gray-400 hover:text-white transition-colors flex items-center justify-center gap-2"
+              >
+                <ChevronLeft className="w-5 h-5" strokeWidth={2} />
+                <span>Volver</span>
+              </button>
             </div>
           </div>
         )}
 
-        {/* PASO 7 - Confirmación Final (anteriormente paso 6) */}
+        {/* PASO 7: Guardar contacto */}
         {step === 7 && (
           <div
             className={`transition-all duration-500 ease-out ${
-              isStepAnimating ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-8 scale-95"
+              isStepAnimating ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
             }`}
-            style={{
-              animation: isStepAnimating ? "fadeInZoom 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
-            }}
           >
-            <div className="space-y-10">
-              <div className="space-y-6 text-center">
-                <div className="flex justify-center">
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-600 to-purple-800 flex items-center justify-center animate-bounce-slow">
-                    <Check className="w-10 h-10 text-white" strokeWidth={3} />
-                  </div>
+            <div className="space-y-6">
+              <div className="text-center">
+                <div className="inline-block px-4 py-2 rounded-full bg-purple-950/50 border border-purple-600/40 mb-4">
+                  <span className="text-sm font-bold text-purple-400">Paso 5 de 5</span>
                 </div>
-                <h2 className="text-4xl font-bold text-white neon-text">¡Carga Enviada!</h2>
-                <p className="text-center text-gray-400 text-base leading-relaxed max-w-md mx-auto">
-                  Tu comprobante fue enviado correctamente. Recibirás tu acreditación en los próximos minutos.
+                <h2 className="text-3xl font-bold text-white mb-2">Último paso</h2>
+                <p className="text-gray-400 text-sm">Guardá nuestro contacto</p>
+              </div>
+
+              <div className="space-y-4 p-6 rounded-2xl border-2 border-purple-600/50 bg-purple-950/20">
+                <div className="flex items-center gap-3 mb-3">
+                  <Phone className="w-8 h-8 text-purple-400" strokeWidth={2} />
+                  <h3 className="text-xl font-bold text-white">Para concluir la carga</h3>
+                </div>
+                <p className="text-base text-gray-300 leading-relaxed">
+                  Debés agendar nuestro teléfono en tu agenda antes de continuar. Esto es{" "}
+                  <strong className="text-white">obligatorio</strong> para completar el proceso.
+                </p>
+
+                <button
+                  onClick={handleDownloadContact}
+                  className="w-full h-14 btn-gradient-animated text-white font-bold text-base rounded-xl transition-all flex items-center justify-center gap-2 hover:scale-105 mt-4"
+                >
+                  <Download className="w-5 h-5" strokeWidth={2.5} />
+                  <span>Agregar Contacto</span>
+                </button>
+
+                <p className="text-xs text-gray-400 text-center mt-3">
+                  Al hacer clic se descargará el contacto y podrás continuar
                 </p>
               </div>
 
-              <div className="bg-gray-900/50 border border-purple-600/30 rounded-xl p-6 space-y-3">
-                <div className="flex items-start gap-3">
-                  <Clock className="w-5 h-5 text-purple-500 mt-0.5 flex-shrink-0" strokeWidth={2} />
-                  <div>
-                    <p className="text-white font-medium text-base">Tiempo de acreditación</p>
-                    <p className="text-gray-400 text-sm">Entre 5 y 30 minutos</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <MessageCircle className="w-5 h-5 text-purple-500 mt-0.5 flex-shrink-0" strokeWidth={2} />
-                  <div>
-                    <p className="text-white font-medium text-base">¿Problemas?</p>
-                    <p className="text-gray-400 text-sm">Contactá a soporte desde el menú principal</p>
-                  </div>
-                </div>
-              </div>
+              <button
+                onClick={handleWhatsAppSend}
+                disabled={!vcfDownloaded} // Ensure VCF was downloaded
+                className="w-full h-14 btn-gradient-animated text-white font-semibold text-base rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105"
+              >
+                Enviar por WhatsApp
+              </button>
 
-              <div className="space-y-4">
-                <button
-                  onClick={() => {
-                    // Resetear estados y volver al inicio
-                    setApodo("")
-                    setDigitos("")
-                    setUsuario("")
-                    setUsername("")
-                    setTitular("")
-                    setMonto("")
-                    setConditionsAccepted(false) // Resetear checkbox
-                    changeStep(1, "forward")
-                  }}
-                  className="w-full h-14 btn-gradient-animated text-white font-semibold text-base rounded-xl transition-all flex items-center justify-center gap-3 hover:scale-105 hover:shadow-[0_0_40px_rgba(167,139,250,0.6)]"
-                >
-                  <Home className="w-5 h-5" strokeWidth={2} />
-                  <span>Volver al Inicio</span>
-                </button>
-              </div>
+              <button
+                onClick={() => changeStep(6, "back")}
+                className="w-full h-12 text-base border border-gray-800 hover:border-purple-600 transition-all text-white font-medium rounded-xl"
+              >
+                <ArrowLeft className="w-5 h-5 inline mr-2" strokeWidth={2} />
+                Volver
+              </button>
             </div>
           </div>
         )}
@@ -1199,7 +1220,7 @@ Adjunto comprobante.`
 
               <div className="space-y-4">
                 <a
-                  href={`https://wa.me/${settings?.support_phone || "543416605903"}?text=Hola,%20me%20contacto%20desde%20TheCrown.`}
+                  href={`https://wa.me/${supportPhone}?text=Hola,%20me%20contacto%20desde%20TheCrown.`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full h-14 btn-gradient-animated text-white font-semibold text-base rounded-xl transition-all flex items-center justify-center gap-3 hover:scale-105 hover:shadow-[0_0_40px_rgba(167,139,250,0.6)]"

@@ -31,6 +31,7 @@ export async function POST(request: Request) {
       platformUrl,
       bonusEnabled,
       bonusPercentage,
+      rotationEnabled,
     } = body
 
     if (!pin || pin !== adminPin) {
@@ -113,6 +114,13 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "El porcentaje del bono debe estar entre 0 y 100" }, { status: 400 })
       }
       updates.bonusPercentage = bonusPercentage
+    }
+
+    if (rotationEnabled !== undefined) {
+      if (typeof rotationEnabled !== "boolean") {
+        return NextResponse.json({ error: "El estado de rotación debe ser verdadero o falso" }, { status: 400 })
+      }
+      updates.rotationEnabled = rotationEnabled
     }
 
     const updatedSettings = await updateSettings(updates)
