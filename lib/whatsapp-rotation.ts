@@ -1,4 +1,4 @@
-// Sistema de rotación de números de WhatsApp para atención
+// Sistema de rotación de números de WhatsApp para atención usando Supabase
 
 export interface AttentionNumber {
   id: number
@@ -8,203 +8,141 @@ export interface AttentionNumber {
   note?: string
 }
 
-export interface RotationConfig {
-  mode: "clicks" | "time"
-  threshold: number // clics o minutos según el modo
-  currentIndex: number
-  clickCounts: Record<number, number>
-  lastRotationTime: number
+export interface SupabaseSettings {
+  rotation_enabled: boolean
+  rotation_mode: "clicks" | "time"
+  rotation_threshold: number
+  current_rotation_index: number
+  rotation_click_count: number
+  last_rotation_time: string
+  phone: string
+  // 9 números de atención fijos
+  attention_phone_1?: string
+  attention_name_1?: string
+  attention_active_1: boolean
+  attention_phone_2?: string
+  attention_name_2?: string
+  attention_active_2: boolean
+  attention_phone_3?: string
+  attention_name_3?: string
+  attention_active_3: boolean
+  attention_phone_4?: string
+  attention_name_4?: string
+  attention_active_4: boolean
+  attention_phone_5?: string
+  attention_name_5?: string
+  attention_active_5: boolean
+  attention_phone_6?: string
+  attention_name_6?: string
+  attention_active_6: boolean
+  attention_phone_7?: string
+  attention_name_7?: string
+  attention_active_7: boolean
+  attention_phone_8?: string
+  attention_name_8?: string
+  attention_active_8: boolean
+  attention_phone_9?: string
+  attention_name_9?: string
+  attention_active_9: boolean
 }
 
-const STORAGE_KEY_ROTATION = "thecrown_rotation_config"
-const STORAGE_KEY_NUMBERS = "thecrown_attention_numbers"
+function getAttentionNumbersFromSettings(settings: SupabaseSettings): AttentionNumber[] {
+  const numbers: AttentionNumber[] = []
 
-// Números por defecto (sincronizados con SUPPORT_CONTACTS de sys32)
-const DEFAULT_NUMBERS: AttentionNumber[] = [
-  { id: 1, label: "1. Sofía — B", phone: "5493416198041", active: true },
-  { id: 2, label: "2. Milu — B", phone: "5491160340101", active: true },
-  { id: 3, label: "3. Sara — P", phone: "5491160340179", active: true },
-  { id: 4, label: "4. Cecilia", phone: "543416132645", active: true },
-  { id: 5, label: "5. Ludmila", phone: "543416845591", active: true },
-]
+  for (let i = 1; i <= 9; i++) {
+    const phoneKey = `attention_phone_${i}` as keyof SupabaseSettings
+    const nameKey = `attention_name_${i}` as keyof SupabaseSettings
+    const activeKey = `attention_active_${i}` as keyof SupabaseSettings
 
-// Configuración por defecto
-const DEFAULT_ROTATION_CONFIG: RotationConfig = {
-  mode: "clicks",
-  threshold: 100,
-  currentIndex: 0,
-  clickCounts: {},
-  lastRotationTime: Date.now(),
-}
+    const phone = settings[phoneKey] as string
+    const name = settings[nameKey] as string
+    const active = settings[activeKey] as boolean
 
-export function getAttentionNumbers(): AttentionNumber[] {
-  if (typeof window === "undefined") return DEFAULT_NUMBERS
-
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY_NUMBERS)
-    if (stored) {
-      return JSON.parse(stored)
+    if (phone && phone.trim()) {
+      numbers.push({
+        id: i,
+        phone: phone.trim(),
+        label: name?.trim() || `Número ${i}`,
+        active: active || false,
+      })
     }
-  } catch (error) {
-    console.error("[WhatsApp Rotation] Error loading numbers:", error)
   }
 
-  return DEFAULT_NUMBERS
-}
-
-export function saveAttentionNumbers(numbers: AttentionNumber[]): void {
-  if (typeof window === "undefined") return
-
-  try {
-    localStorage.setItem(STORAGE_KEY_NUMBERS, JSON.stringify(numbers))
-  } catch (error) {
-    console.error("[WhatsApp Rotation] Error saving numbers:", error)
-  }
-}
-
-export function getRotationConfig(): RotationConfig {
-  if (typeof window === "undefined") return DEFAULT_ROTATION_CONFIG
-
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY_ROTATION)
-    if (stored) {
-      return JSON.parse(stored)
-    }
-  } catch (error) {
-    console.error("[WhatsApp Rotation] Error loading config:", error)
-  }
-
-  return DEFAULT_ROTATION_CONFIG
-}
-
-export function saveRotationConfig(config: RotationConfig): void {
-  if (typeof window === "undefined") return
-
-  try {
-    localStorage.setItem(STORAGE_KEY_ROTATION, JSON.stringify(config))
-  } catch (error) {
-    console.error("[WhatsApp Rotation] Error saving config:", error)
-  }
-}
-
-export function resetClickCounters(): void {
-  const config = getRotationConfig()
-  config.clickCounts = {}
-  config.currentIndex = 0
-  saveRotationConfig(config)
+  return numbers
 }
 
 /**
  * Obtiene el siguiente número de atención según la configuración de rotación
- * @param fallbackPhone Número de fallback si no hay números activos
- * @param rotationEnabled Si la rotación está activada (si es false, usa número fijo)
+ * @param settings Configuración completa de Supabase
  * @returns El número de teléfono a usar
  */
-export function getNextAttentionNumber(fallbackPhone?: string, rotationEnabled = true): string {
-  // Si la rotación está desactivada, usar el número fijo
-  if (!rotationEnabled && fallbackPhone) {
+export async function getNextAttentionNumber(settings: SupabaseSettings): Promise<string> {
+  if (!settings.rotation_enabled) {
     console.log("[WhatsApp Rotation] Rotation disabled, using fixed phone")
-    return fallbackPhone
+    return settings.phone || ""
   }
 
-  const numbers = getAttentionNumbers()
-  const config = getRotationConfig()
+  const allNumbers = getAttentionNumbersFromSettings(settings)
+  const activeNumbers = allNumbers.filter((n) => n.active)
 
-  // Filtrar solo números activos
-  const activeNumbers = numbers.filter((n) => n.active)
-
-  // Si no hay números activos, usar fallback
   if (activeNumbers.length === 0) {
     console.warn("[WhatsApp Rotation] No active numbers, using fallback")
-    return fallbackPhone || numbers[0]?.phone || ""
+    return settings.phone || ""
   }
 
-  // Si solo hay un número activo, usarlo siempre
   if (activeNumbers.length === 1) {
     return activeNumbers[0].phone
   }
 
-  let selectedNumber: AttentionNumber
+  let currentIndex = settings.current_rotation_index || 0
 
-  if (config.mode === "clicks") {
-    // Modo: Rotación por clics
-    // Encontrar el primer número que no haya alcanzado el threshold
-    let foundNumber = false
+  if (settings.rotation_mode === "clicks") {
+    try {
+      const response = await fetch("/api/admin/rotation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ incrementClick: true }),
+      })
 
-    for (let i = 0; i < activeNumbers.length; i++) {
-      const number = activeNumbers[i]
-      const clicks = config.clickCounts[number.id] || 0
-
-      if (clicks < config.threshold) {
-        selectedNumber = number
-        foundNumber = true
-
-        // Incrementar contador
-        config.clickCounts[number.id] = clicks + 1
-        config.currentIndex = i
-        saveRotationConfig(config)
-        break
+      const data = await response.json()
+      if (data.success && data.phone) {
+        console.log(`[WhatsApp Rotation] Click mode - Selected: ${data.label}`)
+        return data.phone
       }
+    } catch (error) {
+      console.error("[WhatsApp Rotation] Error incrementing click:", error)
     }
 
-    // Si todos alcanzaron el threshold, resetear y empezar de nuevo
-    if (!foundNumber) {
-      console.log("[WhatsApp Rotation] All numbers reached threshold, resetting...")
-      resetClickCounters()
-      const newConfig = getRotationConfig()
-      selectedNumber = activeNumbers[0]
-      newConfig.clickCounts[selectedNumber.id] = 1
-      newConfig.currentIndex = 0
-      saveRotationConfig(newConfig)
-    }
+    return activeNumbers[currentIndex].phone
   } else {
-    // Modo: Rotación por tiempo
+    const lastRotation = new Date(settings.last_rotation_time).getTime()
     const now = Date.now()
-    const elapsedMinutes = (now - config.lastRotationTime) / 1000 / 60
+    const elapsedMinutes = (now - lastRotation) / 1000 / 60
 
-    if (elapsedMinutes >= config.threshold) {
-      // Rotar al siguiente número
-      config.currentIndex = (config.currentIndex + 1) % activeNumbers.length
-      config.lastRotationTime = now
-      saveRotationConfig(config)
-      console.log(`[WhatsApp Rotation] Time threshold reached, rotating to index ${config.currentIndex}`)
+    if (elapsedMinutes >= settings.rotation_threshold) {
+      currentIndex = (currentIndex + 1) % activeNumbers.length
+      console.log(`[WhatsApp Rotation] Time threshold reached, rotating to index ${currentIndex}`)
     }
 
-    selectedNumber = activeNumbers[config.currentIndex]
+    return activeNumbers[currentIndex].phone
   }
-
-  console.log(`[WhatsApp Rotation] Selected number: ${selectedNumber!.label}`)
-  return selectedNumber!.phone
 }
 
 /**
- * Obtiene información del número actual en uso
+ * Resetea los contadores de rotación
  */
-export function getCurrentNumberInfo(): { label: string; phone: string; mode: string; progress: string } | null {
-  const numbers = getAttentionNumbers()
-  const config = getRotationConfig()
-  const activeNumbers = numbers.filter((n) => n.active)
+export async function resetRotationCounters(): Promise<boolean> {
+  try {
+    const response = await fetch("/api/admin/rotation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resetCounters: true }),
+    })
 
-  if (activeNumbers.length === 0) {
-    return null
-  }
-
-  const currentNumber = activeNumbers[config.currentIndex] || activeNumbers[0]
-
-  let progress = ""
-  if (config.mode === "clicks") {
-    const clicks = config.clickCounts[currentNumber.id] || 0
-    progress = `${clicks}/${config.threshold} clics`
-  } else {
-    const now = Date.now()
-    const elapsedMinutes = Math.floor((now - config.lastRotationTime) / 1000 / 60)
-    progress = `${elapsedMinutes}/${config.threshold} min`
-  }
-
-  return {
-    label: currentNumber.label,
-    phone: currentNumber.phone,
-    mode: config.mode === "clicks" ? "Por clics" : "Por tiempo",
-    progress,
+    const data = await response.json()
+    return data.success
+  } catch (error) {
+    console.error("[WhatsApp Rotation] Error resetting counters:", error)
+    return false
   }
 }

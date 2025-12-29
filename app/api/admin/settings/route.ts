@@ -32,6 +32,9 @@ export async function POST(request: Request) {
       bonusEnabled,
       bonusPercentage,
       rotationEnabled,
+      rotationMode,
+      rotationThreshold,
+      rotationNumbers,
     } = body
 
     if (!pin || pin !== adminPin) {
@@ -116,11 +119,41 @@ export async function POST(request: Request) {
       updates.bonusPercentage = bonusPercentage
     }
 
+    for (let i = 1; i <= 9; i++) {
+      const phoneKey = `attention_phone_${i}`
+      const nameKey = `attention_name_${i}`
+      const activeKey = `attention_active_${i}`
+
+      if (body[phoneKey] !== undefined) {
+        updates[phoneKey] = body[phoneKey]
+      }
+      if (body[nameKey] !== undefined) {
+        updates[nameKey] = body[nameKey]
+      }
+      if (body[activeKey] !== undefined) {
+        updates[activeKey] = body[activeKey]
+      }
+    }
+
     if (rotationEnabled !== undefined) {
       if (typeof rotationEnabled !== "boolean") {
         return NextResponse.json({ error: "El estado de rotación debe ser verdadero o falso" }, { status: 400 })
       }
       updates.rotationEnabled = rotationEnabled
+    }
+
+    if (rotationMode !== undefined) {
+      if (rotationMode !== "clicks" && rotationMode !== "time") {
+        return NextResponse.json({ error: "El modo de rotación debe ser 'clicks' o 'time'" }, { status: 400 })
+      }
+      updates.rotationMode = rotationMode
+    }
+
+    if (rotationThreshold !== undefined) {
+      if (typeof rotationThreshold !== "number" || rotationThreshold < 1) {
+        return NextResponse.json({ error: "El umbral de rotación debe ser mayor a 0" }, { status: 400 })
+      }
+      updates.rotationThreshold = rotationThreshold
     }
 
     const updatedSettings = await updateSettings(updates)

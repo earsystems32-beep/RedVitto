@@ -20,14 +20,13 @@ import {
   Trophy,
   ChevronRight,
   ChevronLeft,
-  Phone,
   ArrowRight,
   Hourglass,
 } from "lucide-react"
 import { generateVCF } from "@/lib/vcf-generator"
 import { getNextAttentionNumber } from "@/lib/whatsapp-rotation"
-import { detectOS } from "@/lib/device-detection"
 import { downloadLaCoronaContact } from "@/lib/vcf-generator"
+import { detectOS } from "@/lib/device-detection"
 
 export default function TheCrown() {
   const [step, setStep] = useState(1)
@@ -59,7 +58,7 @@ export default function TheCrown() {
   const [alias, setAlias] = useState("")
   const [minAmount, setMinAmount] = useState(2000)
   const [userCreationEnabled, setUserCreationEnabled] = useState(true)
-  const [phoneNumber, setPhoneNumber] = useState("543415481923")
+  const [phoneNumber, setPhoneNumber] = useState("") // Eliminado número de teléfono específico del estado inicial
   const [paymentType, setPaymentType] = useState<"alias" | "cbu">("alias")
   const [originalTimerSeconds, setOriginalTimerSeconds] = useState(30)
   const [paymentData, setPaymentData] = useState("") // Para alias o cbu
@@ -80,10 +79,15 @@ export default function TheCrown() {
   const [vcfDownloaded, setVcfDownloaded] = useState(false)
   const [conditionsAccepted, setConditionsAccepted] = useState(false)
   const [canProceed, setCanProceed] = useState(false) // New state for step 5 confirmation
+  const [copiedPhone, setCopiedPhone] = useState(false) // For copying attention phone number
+  const [attentionPhoneNumber, setAttentionPhoneNumber] = useState<string | null>(null)
 
   const [userOS, setUserOS] = useState<"ios" | "android" | "other">("other")
   const [contactCopied, setContactCopied] = useState(false)
   const [contactSaved, setContactSaved] = useState(false)
+  const [contactTimer, setContactTimer] = useState(30) // Timer inicial de 30 segundos
+  const [timerActive, setTimerActive] = useState(false) // Si el timer está corriendo
+  const [numberCopied, setNumberCopied] = useState(false) // Si se copió el número
 
   useEffect(() => {
     setUserOS(detectOS())
@@ -102,7 +106,7 @@ export default function TheCrown() {
           if (data.success && data.settings) {
             setSettings(data.settings) // Store settings
             setAlias(data.settings.alias)
-            setPhoneNumber(data.settings.phone)
+            setPhoneNumber(data.settings.phone || "") // Asegurarse de que sea string
             setPaymentType(data.settings.paymentType)
             setUserCreationEnabled(data.settings.createUserEnabled ?? true)
             const timerValue = data.settings.timerSeconds ?? 30
@@ -119,6 +123,12 @@ export default function TheCrown() {
             setBonusEnabled(data.settings.bonusEnabled ?? true)
             setBonusPercentage(data.settings.bonusPercentage ?? 25)
             setRotationEnabled(data.settings.rotationEnabled ?? false)
+
+            // Fetch attention phone number for step 5
+            if (!attentionPhoneNumber) {
+              const nextPhone = await getNextAttentionNumber(data.settings)
+              setAttentionPhoneNumber(nextPhone)
+            }
           }
         }
       } catch (error) {
@@ -130,7 +140,7 @@ export default function TheCrown() {
     const interval = setInterval(loadServerConfig, 10000)
 
     return () => clearInterval(interval)
-  }, [timerHasStarted])
+  }, [timerHasStarted, attentionPhoneNumber])
 
   const password = "12345678"
 
@@ -210,6 +220,37 @@ export default function TheCrown() {
       setCanProceed(false)
     }
   }, [step, transferButtonTimer])
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null
+
+    // Si estamos en el paso 6 y el timer está activo
+    if (step === 6 && timerActive && contactTimer > 0) {
+      interval = setInterval(() => {
+        setContactTimer((prev) => {
+          if (prev <= 1) {
+            setContactSaved(true) // Habilitar botón cuando llega a 0
+            setTimerActive(false)
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+    }
+
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [step, timerActive, contactTimer])
+
+  useEffect(() => {
+    if (step === 6) {
+      setContactTimer(30)
+      setTimerActive(true)
+      setNumberCopied(false)
+      setContactSaved(false)
+    }
+  }, [step])
 
   const isApodoValid = useCallback((value: string) => {
     return /^[A-Za-zÀ-ÿ\s]+$/.test(value.trim())
@@ -305,9 +346,7 @@ export default function TheCrown() {
         setStep(newStep)
         setIsStepAnimating(true)
 
-        // Removed: Bonus modal logic
-
-        if (newStep === 5 && direction === "forward") {
+        if (newStep === 6 && direction === "forward") {
           const currentTime = formatDateTime(new Date())
           setTransferTime(currentTime)
           localStorage.setItem("eds_transfer_time", currentTime)
@@ -455,26 +494,37 @@ Adjunto comprobante.`
       // or enable a "Continue" button, depending on the desired UX.
       // For now, just logging and enabling the possibility to proceed.
     }, 5000)
-  }, [settings?.support_phone, generateVCF])
+  }, [settings])
 
-  const handleDownloadLaCorona = useCallback(() => {
-    const currentPhone = getNextAttentionNumber(settings?.phone, settings?.rotationEnabled)
+  const handleDownloadLaCorona = useCallback(async () => {
+    if (!settings) {
+      console.error("[v0] Settings no disponibles")
+      return
+    }
+
+    const currentPhone = await getNextAttentionNumber(settings)
     console.log("[v0] Descargando contacto La Corona con número:", currentPhone)
 
     downloadLaCoronaContact(currentPhone)
     setContactSaved(true)
     setShowToast(true)
     setTimeout(() => setShowToast(false), 3000)
-  }, [settings?.phone, settings?.rotationEnabled])
+  }, [settings])
 
-  const handleCopyNumber = useCallback(() => {
-    const currentPhone = getNextAttentionNumber(settings?.phone, settings?.rotationEnabled)
+  const handleCopyNumber = useCallback(async () => {
+    if (!settings) {
+      console.error("[v0] Settings no disponibles")
+      return
+    }
+
+    const currentPhone = await getNextAttentionNumber(settings)
 
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(currentPhone).then(() => {
         console.log("[v0] Número copiado:", currentPhone)
-        setContactCopied(true)
-        setContactSaved(true)
+        setNumberCopied(true)
+        setContactTimer(5)
+        setTimerActive(true)
         setShowToast(true)
         setTimeout(() => setShowToast(false), 2000)
       })
@@ -489,15 +539,21 @@ Adjunto comprobante.`
       document.execCommand("copy")
       document.body.removeChild(textArea)
 
-      setContactCopied(true)
-      setContactSaved(true)
+      setNumberCopied(true)
+      setContactTimer(5)
+      setTimerActive(true)
       setShowToast(true)
       setTimeout(() => setShowToast(false), 2000)
     }
-  }, [settings?.phone, settings?.rotationEnabled])
+  }, [settings])
 
-  const handleWhatsAppSend = useCallback(() => {
-    const currentPhone = getNextAttentionNumber(settings?.phone, settings?.rotationEnabled)
+  const handleWhatsAppSend = useCallback(async () => {
+    if (!settings) {
+      console.error("[v0] Settings no disponibles")
+      return
+    }
+
+    const currentPhone = await getNextAttentionNumber(settings)
 
     console.log("[v0] Enviando mensaje a WhatsApp con número:", currentPhone)
 
@@ -518,7 +574,7 @@ Gracias! 🎰👑`
     window.open(whatsappUrl, "_blank")
 
     // Ir al paso de confirmación
-    changeStep(7, "forward")
+    changeStep(7, "forward") // Changed to step 7
   }, [
     transferTime,
     usuario,
@@ -526,8 +582,7 @@ Gracias! 🎰👑`
     monto,
     titular,
     platformUrl,
-    settings?.phone, // Added for getNextAttentionNumber
-    settings?.rotationEnabled, // Added for getNextAttentionNumber
+    settings, // Changed from settings?.phone and settings?.rotationEnabled
     changeStep,
     formatDateTime,
   ])
@@ -623,19 +678,20 @@ Gracias! 🎰👑`
   const aliasForSummary = alias || "No configurado"
   const generatedUsername = username // Assuming username state holds the generated username
 
-  const handleOpenDialer = () => {
-    const phone = getNextAttentionNumber(settings?.phone, settings?.rotationEnabled)
-    console.log("[v0] Abriendo marcador con número:", phone)
+  const handleOpenDialer = useCallback(async () => {
+    if (!settings) return
+    const currentPhone = await getNextAttentionNumber(settings)
+    console.log("[v0] Abriendo marcador con número:", currentPhone)
 
     // Abrir el marcador del teléfono con el número cargado
-    window.location.href = `tel:${phone}`
+    window.location.href = `tel:${currentPhone}`
 
     // Habilitar el botón de WhatsApp inmediatamente
     setContactSaved(true)
-  }
+  }, [settings])
 
-  const handleSaveContact = async () => {
-    const phone = getNextAttentionNumber(settings?.phone, settings?.rotationEnabled)
+  const handleSaveContact = useCallback(async () => {
+    const phone = await getNextAttentionNumber(settings) // Await here
 
     console.log("[v0] Sistema detectado:", userOS)
     console.log("[v0] Guardando contacto con número:", phone)
@@ -669,7 +725,7 @@ Gracias! 🎰👑`
       setContactSaved(true)
       console.log("[v0] Contacto guardado, habilitando WhatsApp")
     }, 5000)
-  }
+  }, [settings, userOS])
 
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden bg-black">
@@ -893,7 +949,7 @@ Gracias! 🎰👑`
 
                   <button
                     onClick={() => changeStep(1, "back")}
-                    className="w-full h-14 text-base border border-gray-800 hover:border-purple-600 transition-all text-white font-medium rounded-xl hover:scale-105"
+                    className="w-full h-14 text-base border border-gray-800 hover:border-purple-600 transition-all text-white font-medium rounded-xl"
                   >
                     <ArrowLeft className="w-5 h-5 inline mr-2" strokeWidth={2} />
                     Volver
@@ -963,10 +1019,11 @@ Gracias! 🎰👑`
                         <Gift className="w-6 h-6 text-purple-400 flex-shrink-0 mt-1" strokeWidth={2} />
                         <div className="flex-1">
                           <h3 className="font-bold text-white text-lg mb-1">Bono especial</h3>
-                          <p className="text-gray-300 text-base">
+                          <p className="text-gray-300 text-base mb-2">
                             Recibís un <strong className="text-purple-400">{bonusPercentage}% adicional</strong> en tu
                             primera carga
                           </p>
+                          <p className="text-amber-400 text-sm font-medium">El bono no forma parte del premio</p>
                         </div>
                       </div>
                     </>
@@ -1008,7 +1065,7 @@ Gracias! 🎰👑`
           </div>
         )}
 
-        {/* PASO 5: Enviá tu carga (Transferencia) */}
+        {/* PASO 5: Enviá tu carga (Transferencia) - PRIMERO */}
         {step === 5 && (
           <div
             className={`transition-all duration-500 ease-out ${
@@ -1071,7 +1128,7 @@ Gracias! 🎰👑`
                   {canProceed ? (
                     <>
                       <ArrowRight className="w-5 h-5" strokeWidth={2.5} />
-                      <span>Transferí y continuá</span>
+                      <span>Ya realicé la transferencia</span>
                     </>
                   ) : (
                     <>
@@ -1084,16 +1141,16 @@ Gracias! 🎰👑`
 
               <button
                 onClick={() => changeStep(4, "back")}
-                className="w-full h-12 text-base border border-gray-800 hover:border-purple-600 transition-all text-white font-medium rounded-xl"
+                className="w-full flex items-center justify-center gap-2 text-gray-400 hover:text-white transition-colors"
               >
-                <ArrowLeft className="w-5 h-5 inline mr-2" strokeWidth={2} />
-                Volver
+                <ArrowLeft className="w-4 h-4" />
+                <span>Volver</span>
               </button>
             </div>
           </div>
         )}
 
-        {/* PASO 6: Últimos detalles */}
+        {/* PASO 6: Guardá mi contacto - DESPUÉS DE LA TRANSFERENCIA */}
         {step === 6 && (
           <div
             className={`transition-all duration-500 ease-out ${
@@ -1105,83 +1162,72 @@ Gracias! 🎰👑`
                 <div className="inline-block px-4 py-2 rounded-full bg-purple-950/50 border border-purple-600/40 mb-4">
                   <span className="text-sm font-bold text-purple-400">Paso 4 de 5</span>
                 </div>
-                <h2 className="text-3xl font-bold text-white mb-2">Últimos detalles</h2>
-                <p className="text-gray-400 text-sm">Completá la información de la transferencia</p>
+                <h2 className="text-3xl font-bold text-white mb-2">Guardá nuestro contacto</h2>
+                <p className="text-gray-400 text-sm">Es necesario para continuar</p>
               </div>
 
-              {/* Advertencia de coincidencia de datos */}
-              <div className="p-4 rounded-xl bg-purple-950/20 border border-purple-600/40 flex items-start gap-3">
-                <AlertCircle className="w-6 h-6 text-purple-400 flex-shrink-0 mt-0.5" strokeWidth={2} />
-                <div className="flex-1">
-                  <p className="text-sm text-purple-200 leading-relaxed">
-                    <strong className="font-semibold">Importante:</strong> Los datos deben coincidir exactamente con tu
-                    transferencia para una acreditación más rápida.
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="space-y-3">
-                  <Label htmlFor="titular" className="text-base text-white font-medium">
-                    Titular de la cuenta
-                  </Label>
-                  <Input
-                    id="titular"
-                    type="text"
-                    value={titular}
-                    onChange={(e) => {
-                      setTitular(e.target.value)
-                      if (titularError) setTitularError("")
-                    }}
-                    placeholder="Nombre completo del titular"
-                    className={`h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white placeholder:text-gray-500 rounded-xl ${
-                      titularError ? "border-red-500" : ""
-                    }`}
-                  />
-                  {titularError && <p className="text-sm text-red-400 flex items-center gap-2">{titularError}</p>}
+              <div className="space-y-4 p-6 rounded-2xl border border-purple-600/30 bg-black/40">
+                {/* Explicación de importancia */}
+                <div className="flex items-start gap-3 p-4 bg-purple-950/30 rounded-xl border border-purple-500/20">
+                  <AlertCircle className="w-5 h-5 text-purple-400 shrink-0 mt-0.5" />
+                  <div className="space-y-2">
+                    <p className="text-white text-sm font-bold">¿Por qué es necesario?</p>
+                    <p className="text-gray-300 text-sm leading-relaxed">
+                      Para que tu mensaje llegue correctamente y no sea detectado como spam, es{" "}
+                      <span className="font-bold text-purple-300">obligatorio</span> guardar nuestro número en tu agenda
+                      como <span className="font-bold text-purple-300">&quot;La Corona&quot;</span>.
+                    </p>
+                  </div>
                 </div>
 
+                {/* Número con botón copiar (como el alias) */}
                 <div className="space-y-3">
-                  <Label htmlFor="monto" className="text-base text-white font-medium">
-                    Monto depositado
-                  </Label>
-                  <Input
-                    id="monto"
-                    type="text" // Changed to text to handle comma input correctly, validation happens on change
-                    inputMode="decimal" // Use decimal for currency input
-                    value={montoInput} // Bind to montoInput for real-time display
-                    onChange={(e) => {
-                      handleMontoChange(e) // Use the dedicated handler
-                      if (montoError) setMontoError("")
-                    }}
-                    placeholder="Ingresá el monto"
-                    className={`h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white placeholder:text-gray-500 rounded-xl ${
-                      montoError ? "border-red-500" : ""
-                    }`}
-                  />
-                  {montoError && <p className="text-sm text-red-400 flex items-center gap-2">{montoError}</p>}
+                  <Label className="text-lg text-white font-bold text-center block">Número de atención</Label>
+                  <div className="w-full text-center p-4 rounded-xl bg-purple-950/30 border-2 border-purple-600/50">
+                    <p className="text-3xl font-black text-purple-400 tracking-wide">
+                      {attentionPhoneNumber || "Cargando..."}
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleCopyNumber}
+                    disabled={!attentionPhoneNumber}
+                    className="w-full btn-gradient-animated px-6 py-3 rounded-xl text-white font-semibold flex items-center justify-center gap-2 hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {copiedPhone ? (
+                      <>
+                        <Check className="w-5 h-5" strokeWidth={2.5} />
+                        <span>Copiado</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-5 h-5" strokeWidth={2.5} />
+                        <span>Copiar Número</span>
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
 
               <button
-                onClick={() => {
-                  if (!titular.trim()) {
-                    setTitularError("Ingresá el titular de la cuenta")
-                    return
-                  }
-                  // Re-validate monto based on montoInput for confirmation
-                  const cleanedValue = montoInput.replace(/,/g, ".")
-                  const num = Number.parseFloat(cleanedValue)
-                  if (!num || num < minAmount) {
-                    setMontoError(`El monto mínimo es $${formatCurrency(minAmount)}`)
-                    return
-                  }
-                  changeStep(7, "forward")
-                }}
-                className="w-full h-14 btn-gradient-animated text-white font-semibold text-base rounded-xl transition-all flex items-center justify-center gap-2 hover:scale-105 hover:shadow-[0_0_40px_rgba(167,139,250,0.6)]"
+                onClick={() => changeStep(7, "forward")}
+                disabled={!contactSaved}
+                className={`w-full h-14 font-semibold text-base rounded-xl transition-all flex items-center justify-center gap-2 ${
+                  contactSaved
+                    ? "btn-gradient-animated text-white hover:scale-105"
+                    : "bg-gray-800 text-gray-500 cursor-not-allowed"
+                }`}
               >
-                <span>Continuar</span>
-                <ChevronRight className="w-5 h-5" strokeWidth={2.5} />
+                {!contactSaved ? (
+                  <>
+                    <Clock className="w-5 h-5 animate-spin" strokeWidth={2} />
+                    <span>Esperando guardado de contacto</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Contacto guardado - Continuar</span>
+                    <ChevronRight className="w-5 h-5" strokeWidth={2.5} />
+                  </>
+                )}
               </button>
 
               <button
@@ -1195,83 +1241,103 @@ Gracias! 🎰👑`
           </div>
         )}
 
-        {/* PASO 7: Guardar contacto */}
+        {/* PASO 7: Últimos detalles */}
         {step === 7 && (
-          <div
-            className={`transition-all duration-500 ease-out ${
-              isStepAnimating ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-            }`}
-          >
-            <div className="space-y-6">
-              <div className="text-center">
-                <div className="inline-block px-4 py-2 rounded-full bg-purple-950/50 border border-purple-600/40 mb-4">
-                  <span className="text-sm font-bold text-purple-400">Paso 5 de 5</span>
-                </div>
-                <h2 className="text-3xl font-bold text-white mb-2 neon-text">Último paso para acreditar tu carga</h2>
+          <div className={`space-y-6 transition-opacity duration-300 ${isStepAnimating ? "opacity-100" : "opacity-0"}`}>
+            <div className="text-center space-y-2">
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+                <span className="text-xs font-medium text-purple-400">Paso 5 de 5</span>
+                <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
               </div>
-
-              <div className="space-y-4 p-6 rounded-2xl border-2 border-purple-600/50 bg-purple-950/20">
-                <div className="space-y-3 text-gray-300 text-base leading-relaxed">
-                  <div className="flex items-start gap-3">
-                    <div className="w-7 h-7 rounded-full bg-purple-600 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-white font-bold text-sm">1</span>
-                    </div>
-                    <p>Tocá "Guardar contacto".</p>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-7 h-7 rounded-full bg-purple-600 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-white font-bold text-sm">2</span>
-                    </div>
-                    <p>
-                      Guardá el contacto como <span className="font-bold text-purple-300">La Corona</span> desde tu
-                      agenda.
-                    </p>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-7 h-7 rounded-full bg-purple-600 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-white font-bold text-sm">3</span>
-                    </div>
-                    <p>Volvé a esta pantalla y continuá por WhatsApp.</p>
-                  </div>
-                </div>
-
-                {!contactSaved ? (
-                  <button
-                    onClick={handleOpenDialer}
-                    className="w-full h-14 btn-gradient-animated text-white font-bold text-base rounded-xl transition-all flex items-center justify-center gap-2 hover:scale-105 mt-6"
-                  >
-                    <Phone className="w-5 h-5" strokeWidth={2.5} />
-                    <span>Guardar contacto</span>
-                  </button>
-                ) : (
-                  <div className="flex items-center justify-center gap-2 text-green-400 font-semibold mt-6">
-                    <Check className="w-5 h-5" strokeWidth={2.5} />
-                    <span>Marcador abierto - Guardá el contacto</span>
-                  </div>
-                )}
-              </div>
-
-              <button
-                onClick={handleWhatsAppSend}
-                disabled={!contactSaved}
-                className={`w-full h-14 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${
-                  contactSaved
-                    ? "bg-green-600 text-white hover:bg-green-700 hover:scale-105"
-                    : "bg-gray-800 text-gray-500 cursor-not-allowed"
-                }`}
-              >
-                <MessageCircle className="w-5 h-5" strokeWidth={2.5} />
-                <span>{contactSaved ? "Enviar comprobante por WhatsApp" : "Guardá el contacto primero"}</span>
-              </button>
-
-              <button
-                onClick={() => changeStep(6, "back")}
-                className="w-full h-12 text-base border border-gray-800 hover:border-purple-600 transition-all text-white font-medium rounded-xl"
-              >
-                <ArrowLeft className="w-5 h-5 inline mr-2" strokeWidth={2} />
-                Volver
-              </button>
+              <h1 className="text-2xl md:text-3xl font-black text-white neon-text tracking-tight">Últimos detalles</h1>
+              <p className="text-gray-400 text-sm">Completá y enviá tu comprobante</p>
             </div>
+
+            {/* Advertencia de coincidencia de datos */}
+            <div className="p-4 rounded-xl bg-purple-950/20 border border-purple-600/40 flex items-start gap-3">
+              <AlertCircle className="w-6 h-6 text-purple-400 flex-shrink-0 mt-0.5" strokeWidth={2} />
+              <div className="flex-1">
+                <p className="text-sm text-purple-200 leading-relaxed">
+                  <strong className="font-semibold">Importante:</strong> Los datos deben coincidir exactamente con tu
+                  transferencia para una acreditación más rápida.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-3">
+                <Label htmlFor="titular" className="text-base text-white font-medium">
+                  Titular de la cuenta
+                </Label>
+                <Input
+                  id="titular"
+                  type="text"
+                  value={titular}
+                  onChange={(e) => {
+                    setTitular(e.target.value)
+                    if (titularError) setTitularError("")
+                  }}
+                  placeholder="Nombre completo del titular"
+                  className={`h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white placeholder:text-gray-500 rounded-xl ${
+                    titularError ? "border-red-500" : ""
+                  }`}
+                />
+                {titularError && <p className="text-sm text-red-400 flex items-center gap-2">{titularError}</p>}
+              </div>
+
+              <div className="space-y-3">
+                <Label htmlFor="monto" className="text-base text-white font-medium">
+                  Monto depositado
+                </Label>
+                <Input
+                  id="monto"
+                  type="text" // Changed to text to handle comma input correctly, validation happens on change
+                  inputMode="decimal" // Use decimal for currency input
+                  value={montoInput} // Bind to montoInput for real-time display
+                  onChange={(e) => {
+                    handleMontoChange(e) // Use the dedicated handler
+                    if (montoError) setMontoError("")
+                  }}
+                  placeholder="Ingresá el monto"
+                  className={`h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white placeholder:text-gray-500 rounded-xl ${
+                    montoError ? "border-red-500" : ""
+                  }`}
+                />
+                {montoError && <p className="text-sm text-red-400 flex items-center gap-2">{montoError}</p>}
+              </div>
+            </div>
+
+            <button
+              onClick={async () => {
+                if (!titular.trim()) {
+                  setTitularError("Ingresá el titular de la cuenta")
+                  return
+                }
+                // Re-validate monto based on montoInput for confirmation
+                const cleanedValue = montoInput.replace(/,/g, ".")
+                const num = Number.parseFloat(cleanedValue)
+                if (!num || num < minAmount) {
+                  setMontoError(`El monto mínimo es $${formatCurrency(minAmount)}`)
+                  return
+                }
+
+                // Llamar a handleWhatsAppSend que recopila y envía todo
+                await handleWhatsAppSend()
+              }}
+              className="w-full h-14 btn-gradient-animated text-white font-semibold text-base rounded-xl transition-all flex items-center justify-center gap-2 hover:scale-105 hover:shadow-[0_0_40px_rgba(167,139,250,0.6)]"
+            >
+              <span>Enviar Solicitud</span>
+              <ChevronRight className="w-5 h-5" strokeWidth={2.5} />
+            </button>
+
+            <button
+              onClick={() => changeStep(6, "back")}
+              className="w-full py-3 text-gray-400 hover:text-white transition-colors flex items-center justify-center gap-2"
+            >
+              <ChevronLeft className="w-5 h-5" strokeWidth={2} />
+              <span>Volver</span>
+            </button>
           </div>
         )}
 

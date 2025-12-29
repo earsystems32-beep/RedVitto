@@ -4,9 +4,9 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { LinkIcon, RefreshCw, Settings } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { LinkIcon, Settings, Plus } from "lucide-react"
 import {
   Lock,
   LogOut,
@@ -20,24 +20,7 @@ import {
   MessageCircle,
   CheckCircle,
 } from "lucide-react"
-import {
-  getAttentionNumbers,
-  saveAttentionNumbers,
-  getRotationConfig,
-  saveRotationConfig,
-  resetClickCounters,
-  getCurrentNumberInfo,
-  type AttentionNumber,
-} from "@/lib/whatsapp-rotation"
-
-const SUPPORT_CONTACTS = [
-  { name: "1. Sofía — B", phone: "5493416198041" },
-  { name: "2. Milu — B", phone: "5491160340101" },
-  { name: "3. Sara — P", phone: "5491160340179" },
-  { name: "4. Cecilia", phone: "543416132645" },
-  { name: "5. Ludmila", phone: "543416845591" },
-  { name: "Otro / Personalizado", phone: "" },
-]
+import type { AttentionNumber } from "@/lib/whatsapp-rotation"
 
 const sanitizeAlias = (value: string): string => {
   // Allow letters, numbers, dots, and hyphens only
@@ -61,136 +44,126 @@ export default function AdminPage() {
   const [alias, setAlias] = useState("")
   const [paymentType, setPaymentType] = useState<"alias" | "cbu">("alias")
   const [cbuError, setCbuError] = useState("")
-  const [selectedContactIndex, setSelectedContactIndex] = useState<string>("0")
-  const [phone, setPhone] = useState("")
+
   const [supportPhone, setSupportPhone] = useState("")
-  const [selectedSupportContactIndex, setSelectedSupportContactIndex] = useState<string>("5")
-  const [isPhoneEditable, setIsPhoneEditable] = useState(false)
-  const [isSupportPhoneEditable, setIsSupportPhoneEditable] = useState(false)
-  const [activeAlias, setActiveAlias] = useState("")
-  const [activePhone, setActivePhone] = useState("")
-  const [activeContactName, setActiveContactName] = useState("")
-  const [activePaymentType, setActivePaymentType] = useState<"alias" | "cbu">("alias")
+  const [supportName, setSupportName] = useState("")
+  const [platformUrl, setPlatformUrl] = useState("https://ganamos.sbs")
   const [userCreationEnabled, setUserCreationEnabled] = useState(true)
   const [transferTimer, setTransferTimer] = useState("30")
   const [minAmount, setMinAmount] = useState("2000")
   const [bonusEnabled, setBonusEnabled] = useState(true)
   const [bonusPercentage, setBonusPercentage] = useState("25")
-  const [activeBonusEnabled, setActiveBonusEnabled] = useState(true)
-  const [activeBonusPercentage, setActiveBonusPercentage] = useState(25)
-  const [adminPin, setAdminPin] = useState("") // Store PIN for config saves
-  const [activeSupportPhone, setActiveSupportPhone] = useState("") // Declare the variable
-  const [platformUrl, setPlatformUrl] = useState("https://ganamos.sbs")
-  const [activePlatformUrl, setActivePlatformUrl] = useState("https://ganamos.sbs")
+  const [adminPin, setAdminPin] = useState("")
+
+  // Estados activos
+  const [activeAlias, setActiveAlias] = useState("")
+  const [activePaymentType, setActivePaymentType] = useState<"alias" | "cbu">("alias")
   const [activeUserCreationEnabled, setActiveUserCreationEnabled] = useState(true)
   const [activeTransferTimer, setActiveTransferTimer] = useState(30)
   const [activeMinAmount, setActiveMinAmount] = useState(2000)
+  const [activeSupportPhone, setActiveSupportPhone] = useState("")
+  const [activeSupportName, setActiveSupportName] = useState("")
+  const [activePlatformUrl, setActivePlatformUrl] = useState("https://ganamos.sbs")
+  const [activeBonusEnabled, setActiveBonusEnabled] = useState(true)
+  const [activeBonusPercentage, setActiveBonusPercentage] = useState(25)
+
+  // Sistema de rotación
   const [rotationEnabled, setRotationEnabled] = useState(false)
   const [rotationMode, setRotationMode] = useState<"clicks" | "time">("clicks")
-  const [rotationThreshold, setRotationThreshold] = useState(100)
-  const [currentNumberInfo, setCurrentNumberInfo] = useState<ReturnType<typeof getCurrentNumberInfo>>(null)
+  const [rotationThreshold, setRotationThreshold] = useState(10)
   const [attentionNumbers, setAttentionNumbers] = useState<AttentionNumber[]>([])
 
+  // Nuevo número
+  const [newNumberLabel, setNewNumberLabel] = useState("")
+  const [newNumberPhone, setNewNumberPhone] = useState("")
+
+  const [showAddNumberForm, setShowAddNumberForm] = useState(false)
+
   useEffect(() => {
-    const loadSettings = async () => {
-      const response = await fetch("/api/admin/settings", {
+    const checkAuth = async () => {
+      const response = await fetch("/api/admin/verify", {
+        method: "GET",
         credentials: "include",
         cache: "no-store",
       })
-
       if (response.ok) {
         const data = await response.json()
-        if (data.success && data.settings) {
-          const settings = data.settings
-
-          setActiveAlias(settings.alias || "")
-          setActivePhone(settings.phone || "")
-          setActivePaymentType(settings.paymentType || "alias")
-          setActiveUserCreationEnabled(settings.createUserEnabled ?? true)
-          setActiveTransferTimer(settings.timerSeconds ?? 30)
-          setActiveMinAmount(settings.minAmount ?? 2000)
-          setPhone(settings.phone || "")
-          setSupportPhone(settings.support_phone || "")
-          setPlatformUrl(settings.platformUrl || "https://ganamos.sbs")
-          setActivePlatformUrl(settings.platformUrl || "https://ganamos.sbs")
-
-          setAlias(settings.alias || "")
-          setPaymentType(settings.paymentType || "alias")
-          setUserCreationEnabled(settings.createUserEnabled ?? true)
-          setTransferTimer(String(settings.timerSeconds ?? 30))
-          setMinAmount(String(settings.minAmount ?? 2000))
-
-          if (settings.phone) {
-            const idx = SUPPORT_CONTACTS.findIndex((c) => c.phone === settings.phone)
-            if (idx >= 0) {
-              setSelectedContactIndex(String(idx))
-              setIsPhoneEditable(SUPPORT_CONTACTS[idx].name === "Otro / Personalizado")
-            } else {
-              setSelectedContactIndex("0")
-              setIsPhoneEditable(true)
-            }
-          } else {
-            setSelectedContactIndex("0")
-            setIsPhoneEditable(false)
-          }
-
-          if (settings.support_phone) {
-            const idx = SUPPORT_CONTACTS.findIndex((c) => c.phone === settings.support_phone)
-            if (idx >= 0) {
-              setSelectedSupportContactIndex(String(idx))
-              setIsSupportPhoneEditable(SUPPORT_CONTACTS[idx].name === "Otro / Personalizado")
-            } else {
-              setSelectedSupportContactIndex(String(SUPPORT_CONTACTS.length - 1))
-              setIsSupportPhoneEditable(true)
-            }
-          } else {
-            setSelectedSupportContactIndex(String(SUPPORT_CONTACTS.length - 1))
-            setIsSupportPhoneEditable(false)
-          }
-
-          setBonusEnabled(settings.bonusEnabled ?? true)
-          setBonusPercentage(String(settings.bonusPercentage ?? 25))
-          setActiveBonusEnabled(settings.bonusEnabled ?? true)
-          setActiveBonusPercentage(settings.bonusPercentage ?? 25)
-          setRotationEnabled(settings.rotationEnabled ?? false)
+        if (data.authenticated) {
+          setIsAuthenticated(true)
+          setAdminPin(data.pin || "")
+          await loadSettings()
+          loadRotationNumbers()
         }
       }
     }
-
-    const numbers = getAttentionNumbers()
-    const config = getRotationConfig()
-    setAttentionNumbers(numbers)
-    setRotationMode(config.mode)
-    setRotationThreshold(config.threshold)
-    setCurrentNumberInfo(getCurrentNumberInfo())
-
-    loadSettings()
+    checkAuth()
   }, [])
 
-  const handleContactChange = (value: string) => {
-    setSelectedContactIndex(value)
-    const idx = Number.parseInt(value)
-    if (idx >= 0 && idx < SUPPORT_CONTACTS.length) {
-      const contact = SUPPORT_CONTACTS[idx]
-      if (contact.phone) {
-        setPhone(contact.phone)
-        setIsPhoneEditable(false)
-      } else {
-        setIsPhoneEditable(true)
+  const loadRotationNumbers = async () => {
+    try {
+      const response = await fetch("/api/admin/settings")
+      const data = await response.json()
+
+      if (data.success && data.settings) {
+        const settings = data.settings
+        const numbers: AttentionNumber[] = []
+
+        // Convertir las 9 columnas a array
+        for (let i = 1; i <= 9; i++) {
+          const phone = settings[`attention_phone_${i}`]
+          const name = settings[`attention_name_${i}`]
+          const active = settings[`attention_active_${i}`]
+
+          numbers.push({
+            id: i,
+            phone: phone || "",
+            label: name || "",
+            active: active || false,
+          })
+        }
+
+        setAttentionNumbers(numbers)
+        setRotationMode(settings.rotation_mode || "clicks")
+        setRotationThreshold(settings.rotation_threshold || 10)
       }
+    } catch (error) {
+      console.error("[sys32] Error loading rotation numbers:", error)
     }
   }
 
-  const handleSupportContactChange = (value: string) => {
-    setSelectedSupportContactIndex(value)
-    const idx = Number.parseInt(value)
-    if (idx >= 0 && idx < SUPPORT_CONTACTS.length) {
-      const contact = SUPPORT_CONTACTS[idx]
-      if (contact.phone) {
-        setSupportPhone(contact.phone)
-        setIsSupportPhoneEditable(false)
-      } else {
-        setIsSupportPhoneEditable(true)
+  const loadSettings = async () => {
+    const response = await fetch("/api/admin/settings", {
+      credentials: "include",
+      cache: "no-store",
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      if (data.success && data.settings) {
+        const settings = data.settings
+
+        setActiveAlias(settings.alias || "")
+        setActivePaymentType(settings.paymentType || "alias")
+        setActiveUserCreationEnabled(settings.createUserEnabled ?? true)
+        setActiveTransferTimer(settings.timerSeconds ?? 30)
+        setActiveMinAmount(settings.minAmount ?? 2000)
+        setActiveSupportPhone(settings.support_phone || "")
+        setActiveSupportName(settings.support_name || "")
+        setActivePlatformUrl(settings.platformUrl || "https://ganamos.sbs")
+        setActiveBonusEnabled(settings.bonusEnabled ?? true)
+        setActiveBonusPercentage(settings.bonusPercentage ?? 25)
+
+        setAlias(settings.alias || "")
+        setPaymentType(settings.paymentType || "alias")
+        setUserCreationEnabled(settings.createUserEnabled ?? true)
+        setTransferTimer(String(settings.timerSeconds ?? 30))
+        setMinAmount(String(settings.minAmount ?? 2000))
+        setSupportPhone(settings.support_phone || "")
+        setSupportName(settings.support_name || "")
+        setPlatformUrl(settings.platformUrl || "https://ganamos.sbs")
+        setBonusEnabled(settings.bonusEnabled ?? true)
+        setBonusPercentage(String(settings.bonusPercentage ?? 25))
+        setRotationEnabled(settings.rotationEnabled ?? false)
       }
     }
   }
@@ -216,7 +189,8 @@ export default function AdminPage() {
         if (data.success) {
           setIsAuthenticated(true)
           setAdminPin(testPIN)
-          await loadConfig()
+          await loadSettings()
+          loadRotationNumbers() // Cargar números de rotación después de autenticar
           setPinInput("")
         } else {
           alert("PIN incorrecto")
@@ -274,20 +248,71 @@ export default function AdminPage() {
     validateCbu(value)
   }
 
-  const handleSave = async () => {
-    const phoneValue = sanitizePhone(phone.trim())
-    const supportPhoneValue = sanitizePhone(supportPhone.trim())
-    const bonusPercentageNum = Number.parseInt(bonusPercentage, 10)
+  const handleToggleNumberActive = (id: string) => {
+    if (!rotationEnabled) {
+      // Si rotación OFF, desactivar todos excepto el seleccionado
+      setAttentionNumbers((prev) => {
+        const updated = prev.map((num) => ({
+          ...num,
+          active: num.id === id ? !num.active : false,
+        }))
+        return updated
+      })
+    } else {
+      // Si rotación ON, solo toggle el seleccionado
+      setAttentionNumbers((prev) => {
+        const updated = prev.map((num) => (num.id === id ? { ...num, active: !num.active } : num))
+        return updated
+      })
+    }
+  }
+
+  const handleDeleteNumber = (id: string) => {
+    setAttentionNumbers((prev) => prev.filter((num) => num.id !== id))
+  }
+
+  const handleAddNumber = () => {
+    const phoneValue = sanitizePhone(newNumberPhone.trim())
+    const labelValue = newNumberLabel.trim()
+
+    if (!labelValue) {
+      alert("Ingresá un nombre para el contacto")
+      return
+    }
 
     if (!phoneValue || phoneValue.length < 8) {
       alert("Ingresá un teléfono válido (mínimo 8 dígitos)")
       return
     }
 
-    if (phoneValue.length > 15) {
-      alert("El teléfono no puede tener más de 15 dígitos")
+    const newNumber: AttentionNumber = {
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      phone: phoneValue,
+      label: labelValue,
+      active: false,
+    }
+
+    setAttentionNumbers((prev) => [...prev, newNumber])
+    setNewNumberLabel("")
+    setNewNumberPhone("")
+    setShowAddNumberForm(false)
+  }
+
+  const handleSave = async () => {
+    const activeCount = attentionNumbers.filter((n) => n.active).length
+
+    if (!rotationEnabled && activeCount !== 1) {
+      alert("Con rotación desactivada, debe haber exactamente 1 número activo")
       return
     }
+
+    if (rotationEnabled && activeCount === 0) {
+      alert("Activá al menos un número para la rotación")
+      return
+    }
+
+    const supportPhoneValue = sanitizePhone(supportPhone.trim())
+    const bonusPercentageNum = Number.parseInt(bonusPercentage, 10)
 
     if (!supportPhoneValue || supportPhoneValue.length < 8) {
       alert("Ingresá un teléfono de soporte válido (mínimo 8 dígitos)")
@@ -350,6 +375,15 @@ export default function AdminPage() {
     }
 
     try {
+      const attentionColumns: Record<string, string | boolean> = {}
+
+      for (let i = 1; i <= 9; i++) {
+        const number = attentionNumbers[i - 1]
+        attentionColumns[`attention_phone_${i}`] = number?.phone || ""
+        attentionColumns[`attention_name_${i}`] = number?.label || ""
+        attentionColumns[`attention_active_${i}`] = number?.active || false
+      }
+
       const response = await fetch("/api/admin/settings", {
         method: "POST",
         headers: {
@@ -358,17 +392,21 @@ export default function AdminPage() {
         credentials: "include",
         body: JSON.stringify({
           alias: alias.trim(),
-          phone: phoneValue,
+          phone: attentionNumbers.find((n) => n.active)?.phone || supportPhoneValue,
           paymentType: paymentType,
           createUserEnabled: userCreationEnabled,
           timerSeconds: transferTimerNum,
           minAmount: minAmountNum,
           support_phone: supportPhoneValue,
-          platformUrl: urlTrimmed, // Incluir URL de plataforma en el guardado
+          support_name: supportName.trim(),
+          platformUrl: urlTrimmed,
           bonusEnabled: bonusEnabled,
           bonusPercentage: bonusPercentageNum,
           pin: adminPin,
           rotationEnabled: rotationEnabled,
+          rotationMode: rotationMode,
+          rotationThreshold: rotationThreshold,
+          ...attentionColumns,
         }),
       })
 
@@ -380,110 +418,22 @@ export default function AdminPage() {
 
       if (data.success) {
         setActiveAlias(alias.trim())
-        setActivePhone(phoneValue)
         setActivePaymentType(paymentType)
         setActiveUserCreationEnabled(userCreationEnabled)
         setActiveTransferTimer(transferTimerNum)
         setActiveMinAmount(minAmountNum)
-        setActiveContactName(SUPPORT_CONTACTS[Number.parseInt(selectedContactIndex)].name)
-        setActiveSupportPhone(SUPPORT_CONTACTS[Number.parseInt(selectedSupportContactIndex)].phone)
-        setActivePlatformUrl(urlTrimmed) // Actualizar URL activa
+        setActiveSupportPhone(supportPhoneValue)
+        setActiveSupportName(supportName.trim())
+        setActivePlatformUrl(urlTrimmed)
         setActiveBonusEnabled(bonusEnabled)
         setActiveBonusPercentage(bonusPercentageNum)
-        setRotationEnabled(rotationEnabled)
 
-        alert(
-          "✅ Configuración guardada exitosamente en Supabase.\nLos cambios son permanentes y se reflejan en todos los dispositivos.",
-        )
+        alert("✅ Configuración guardada exitosamente.\nLos cambios se reflejan en todos los dispositivos.")
       }
     } catch (error) {
       console.error("Save error:", error)
       alert("❌ Error al guardar. Verificá tu conexión e intentá de nuevo.")
     }
-  }
-
-  const handleSaveRotationConfig = () => {
-    saveAttentionNumbers(attentionNumbers)
-    const config = getRotationConfig()
-    config.mode = rotationMode
-    config.threshold = rotationThreshold
-    saveRotationConfig(config)
-    setCurrentNumberInfo(getCurrentNumberInfo())
-    alert("Configuración de rotación guardada correctamente")
-  }
-
-  const loadConfig = async () => {
-    try {
-      const response = await fetch("/api/admin/settings", {
-        credentials: "include",
-        cache: "no-store",
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success && data.settings) {
-          const settings = data.settings
-
-          setActiveAlias(settings.alias || "")
-          setActivePhone(settings.phone || "")
-          setActivePaymentType(settings.paymentType || "alias")
-          setActiveUserCreationEnabled(settings.createUserEnabled ?? true)
-          setActiveTransferTimer(settings.timerSeconds ?? 30)
-          setActiveMinAmount(settings.minAmount ?? 2000)
-          setPhone(settings.phone || "")
-          setSupportPhone(settings.support_phone || "")
-          setPlatformUrl(settings.platformUrl || "https://ganamos.sbs")
-          setActivePlatformUrl(settings.platformUrl || "https://ganamos.sbs")
-
-          setAlias(settings.alias || "")
-          setPaymentType(settings.paymentType || "alias")
-          setUserCreationEnabled(settings.createUserEnabled ?? true)
-          setTransferTimer(String(settings.timerSeconds ?? 30))
-          setMinAmount(String(settings.minAmount ?? 2000))
-
-          if (settings.phone) {
-            const idx = SUPPORT_CONTACTS.findIndex((c) => c.phone === settings.phone)
-            if (idx >= 0) {
-              setSelectedContactIndex(String(idx))
-              setIsPhoneEditable(SUPPORT_CONTACTS[idx].name === "Otro / Personalizado")
-            } else {
-              setSelectedContactIndex("0")
-              setIsPhoneEditable(true)
-            }
-          } else {
-            setSelectedContactIndex("0")
-            setIsPhoneEditable(false)
-          }
-
-          if (settings.support_phone) {
-            const idx = SUPPORT_CONTACTS.findIndex((c) => c.phone === settings.support_phone)
-            if (idx >= 0) {
-              setSelectedSupportContactIndex(String(idx))
-              setIsSupportPhoneEditable(SUPPORT_CONTACTS[idx].name === "Otro / Personalizado")
-            } else {
-              setSelectedSupportContactIndex(String(SUPPORT_CONTACTS.length - 1))
-              setIsSupportPhoneEditable(true)
-            }
-          } else {
-            setSelectedSupportContactIndex(String(SUPPORT_CONTACTS.length - 1))
-            setIsSupportPhoneEditable(false)
-          }
-
-          setBonusEnabled(settings.bonusEnabled ?? true)
-          setBonusPercentage(String(settings.bonusPercentage ?? 25))
-          setActiveBonusEnabled(settings.bonusEnabled ?? true)
-          setActiveBonusPercentage(settings.bonusPercentage ?? 25)
-          setRotationEnabled(settings.rotationEnabled ?? false)
-        }
-      }
-    } catch (error) {
-      console.error("Error loading config:", error)
-    }
-  }
-
-  const toggleNumberActive = (id: number) => {
-    const updated = attentionNumbers.map((n) => (n.id === id ? { ...n, active: !n.active } : n))
-    setAttentionNumbers(updated)
   }
 
   return (
@@ -669,7 +619,7 @@ export default function AdminPage() {
                         inputMode={paymentType === "cbu" ? "numeric" : "text"}
                         value={alias}
                         onChange={handleAliasChange}
-                        placeholder={paymentType === "alias" ? "Ej: DLHogar.mp" : "Ej: 0000003100010000000000"}
+                        placeholder={paymentType === "alias" ? "Ingresá tu alias" : "Ingresá tu CBU (22 dígitos)"}
                         className={`h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white placeholder:text-gray-500 rounded-xl ${
                           cbuError ? "border-red-400" : ""
                         }`}
@@ -680,78 +630,6 @@ export default function AdminPage() {
                           <span>{cbuError}</span>
                         </div>
                       )}
-                    </div>
-
-                    {/* Contacto de Atención */}
-                    <div className="space-y-3">
-                      <Label className="text-base text-white font-medium flex items-center gap-2">
-                        <Phone className="w-5 h-5 text-purple-400" strokeWidth={2} />
-                        Contacto de atención
-                      </Label>
-                      <p className="text-xs text-gray-400">Número para enviar comprobantes de transferencia</p>
-                      <div className="flex items-center gap-4">
-                        <Select value={selectedContactIndex} onValueChange={handleContactChange}>
-                          <SelectTrigger className="h-14 flex-1 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white rounded-xl">
-                            <SelectValue placeholder="Seleccioná un contacto…" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-black border-purple-600/40 rounded-xl">
-                            {SUPPORT_CONTACTS.map((contact, idx) => (
-                              <SelectItem
-                                key={idx}
-                                value={String(idx)}
-                                className="text-base font-medium text-white focus:bg-purple-950/50"
-                              >
-                                {contact.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Input
-                          type="text"
-                          inputMode="numeric"
-                          value={phone}
-                          onChange={(e) => setPhone(sanitizePhone(e.target.value))}
-                          readOnly={!isPhoneEditable}
-                          placeholder="Número"
-                          className="h-14 w-40 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white placeholder:text-gray-500 rounded-xl"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Contacto de Soporte */}
-                    <div className="space-y-3">
-                      <Label className="text-base text-white font-medium flex items-center gap-2">
-                        <MessageCircle className="w-5 h-5 text-purple-400" strokeWidth={2} />
-                        Contacto de soporte
-                      </Label>
-                      <p className="text-xs text-gray-400">Número para consultas y reclamos</p>
-                      <div className="flex items-center gap-4">
-                        <Select value={selectedSupportContactIndex} onValueChange={handleSupportContactChange}>
-                          <SelectTrigger className="h-14 flex-1 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white rounded-xl">
-                            <SelectValue placeholder="Seleccioná un contacto…" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-black border-purple-600/40 rounded-xl">
-                            {SUPPORT_CONTACTS.map((contact, idx) => (
-                              <SelectItem
-                                key={idx}
-                                value={String(idx)}
-                                className="text-base font-medium text-white focus:bg-purple-950/50"
-                              >
-                                {contact.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Input
-                          type="text"
-                          inputMode="numeric"
-                          value={supportPhone}
-                          onChange={(e) => setSupportPhone(sanitizePhone(e.target.value))}
-                          readOnly={!isSupportPhoneEditable}
-                          placeholder="Número"
-                          className="h-14 w-40 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white placeholder:text-gray-500 rounded-xl"
-                        />
-                      </div>
                     </div>
 
                     {/* URL de Plataforma */}
@@ -767,233 +645,307 @@ export default function AdminPage() {
                         placeholder="https://ganamos.sbs"
                         className="h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white rounded-xl"
                       />
-                      <p className="text-xs text-gray-400">Este link se incluirá en los mensajes de WhatsApp</p>
                     </div>
 
-                    <button
-                      onClick={handleSave}
-                      disabled={paymentType === "cbu" && alias.length !== 22}
-                      className="w-full h-14 btn-gradient-animated text-white font-bold text-base rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2 mt-6"
-                    >
-                      <Save className="w-5 h-5" strokeWidth={2.5} />
-                      Guardar Configuración
-                    </button>
-                  </div>
+                    {/* Configuración del Bono */}
+                    <div className="space-y-4 rounded-lg border border-purple-500/20 bg-black/30 p-4">
+                      <h3 className="text-lg font-semibold text-purple-300">Configuración del Bono</h3>
 
-                  <div className="bg-black/40 backdrop-blur-md border border-purple-600/20 rounded-xl p-6 space-y-4 animate-fadeIn shadow-xl">
-                    <div className="flex items-center gap-3 mb-2">
-                      <RefreshCw className="w-6 h-6 text-purple-500" strokeWidth={2.5} />
-                      <h2 className="text-2xl font-bold text-white neon-text">Rotación de Números</h2>
-                    </div>
-
-                    <div className="p-6 rounded-2xl border-2 border-purple-600/40 bg-black/30 space-y-4">
                       <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="text-base font-semibold text-white mb-1">Sistema de rotación</h4>
-                          <p className="text-sm text-gray-400">
-                            {rotationEnabled
-                              ? "Rotación activa - Los números rotan automáticamente"
-                              : "Rotación desactivada - Se usa el número fijo de atención"}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => setRotationEnabled(!rotationEnabled)}
-                          className={`relative w-14 h-8 rounded-full transition-all duration-300 shadow-lg flex-shrink-0 ${
-                            rotationEnabled ? "bg-gradient-to-r from-purple-600 to-purple-500" : "bg-gray-700"
-                          }`}
-                        >
-                          <span
-                            className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all duration-300 shadow-md ${
-                              rotationEnabled ? "left-7" : "left-1"
-                            }`}
-                          />
-                        </button>
+                        <span className="text-base text-gray-300">Activar Bono</span>
+                        <Switch checked={bonusEnabled} onCheckedChange={setBonusEnabled} />
                       </div>
-                    </div>
 
-                    {rotationEnabled && (
-                      <>
-                        <p className="text-sm text-gray-400 mb-4">
-                          Configura la rotación automática de números para distribuir la carga de mensajes
-                        </p>
-
-                        {/* Estado actual */}
-                        {currentNumberInfo && (
-                          <div className="p-4 rounded-xl bg-purple-950/20 border border-purple-600/40 mb-4">
-                            <h4 className="text-sm font-semibold text-purple-300 mb-2">Número actual en uso:</h4>
-                            <p className="text-white font-bold">{currentNumberInfo.label}</p>
-                            <p className="text-gray-400 text-sm mt-1">{currentNumberInfo.phone}</p>
-                            <p className="text-purple-400 text-sm mt-2">
-                              {currentNumberInfo.mode} • {currentNumberInfo.progress}
-                            </p>
-                          </div>
-                        )}
-
-                        {/* Modo de rotación */}
-                        <div className="space-y-3">
-                          <Label className="text-base text-white font-medium">Modo de rotación</Label>
-                          <Select
-                            value={rotationMode}
-                            onValueChange={(value: "clicks" | "time") => setRotationMode(value)}
-                          >
-                            <SelectTrigger className="h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white rounded-xl">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="bg-black border-purple-600/40 rounded-xl">
-                              <SelectItem value="clicks" className="text-base font-medium text-white">
-                                Por clics (cantidad de usos)
-                              </SelectItem>
-                              <SelectItem value="time" className="text-base font-medium text-white">
-                                Por tiempo (minutos)
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {/* Umbral */}
-                        <div className="space-y-3">
-                          <Label className="text-base text-white font-medium">
-                            {rotationMode === "clicks" ? "Clics máximos por número" : "Minutos por número"}
-                          </Label>
+                      {bonusEnabled && (
+                        <div className="space-y-2">
+                          <Label className="text-sm text-gray-300">Porcentaje del Bono (%)</Label>
                           <Input
                             type="number"
-                            value={rotationThreshold}
-                            onChange={(e) => setRotationThreshold(Number(e.target.value))}
-                            min={1}
-                            placeholder={rotationMode === "clicks" ? "Ej: 100" : "Ej: 60"}
-                            className="h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white rounded-xl"
+                            min="0"
+                            max="100"
+                            value={bonusPercentage}
+                            onChange={(e) => {
+                              const value = Math.max(0, Math.min(100, Number.parseInt(e.target.value) || 0))
+                              setBonusPercentage(String(value))
+                            }}
+                            className="h-12 bg-black/50 border-purple-600/40 focus:border-purple-500 text-white rounded-lg"
                           />
-                          <p className="text-xs text-gray-400">
-                            {rotationMode === "clicks"
-                              ? "Cantidad de clics antes de rotar al siguiente número"
-                              : "Minutos que un número permanece activo antes de rotar"}
-                          </p>
                         </div>
-
-                        {/* Lista de números */}
-                        <div className="space-y-3">
-                          <Label className="text-base text-white font-medium">Números de atención disponibles</Label>
-                          <div className="space-y-2">
-                            {attentionNumbers.map((number) => (
-                              <div
-                                key={number.id}
-                                className="flex items-center justify-between p-3 rounded-xl bg-black/50 border border-purple-600/20"
-                              >
-                                <div className="flex-1">
-                                  <p className="text-white font-medium">{number.label}</p>
-                                  <p className="text-gray-400 text-sm">{number.phone}</p>
-                                </div>
-                                <button
-                                  onClick={() => toggleNumberActive(number.id)}
-                                  className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
-                                    number.active
-                                      ? "bg-green-600/20 text-green-400 border border-green-600/40"
-                                      : "bg-gray-800 text-gray-500 border border-gray-700"
-                                  }`}
-                                >
-                                  {number.active ? "Activo" : "Inactivo"}
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Botones de acción de rotación */}
-                        <div className="flex gap-3 mt-4">
-                          <button
-                            onClick={handleSaveRotationConfig}
-                            className="flex-1 h-12 btn-gradient-animated text-white font-semibold text-base rounded-xl transition-all"
-                          >
-                            Guardar Rotación
-                          </button>
-                          {rotationMode === "clicks" && (
-                            <button
-                              onClick={() => {
-                                resetClickCounters()
-                                setCurrentNumberInfo(getCurrentNumberInfo())
-                                alert("Contadores reseteados")
-                              }}
-                              className="h-12 px-6 bg-gray-800 hover:bg-gray-700 text-white font-semibold rounded-xl transition-all"
-                            >
-                              Resetear
-                            </button>
-                          )}
-                        </div>
-                      </>
-                    )}
-
-                    {!rotationEnabled && (
-                      <div className="p-4 rounded-xl bg-gray-900/50 border border-gray-700">
-                        <p className="text-sm text-gray-400 mb-2">Número fijo en uso:</p>
-                        <p className="text-white font-bold text-lg">{phone}</p>
-                        <p className="text-gray-500 text-xs mt-1">
-                          Todos los mensajes se enviarán a este número de atención
-                        </p>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
 
-                  <div className="bg-black/40 backdrop-blur-md border border-purple-600/20 rounded-xl p-6 space-y-3 animate-fadeIn shadow-xl">
-                    <div className="flex items-center gap-3 mb-3">
-                      <CheckCircle className="w-6 h-6 text-green-500" strokeWidth={2.5} />
-                      <h2 className="text-2xl font-bold text-white neon-text">Configuración Activa</h2>
+                  {/* Número de Soporte */}
+                  <div className="bg-black/40 backdrop-blur-md border border-purple-600/20 rounded-xl p-6 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <MessageCircle className="w-6 h-6 text-purple-500" strokeWidth={2.5} />
+                      <h2 className="text-2xl font-bold text-white neon-text">Número de Soporte</h2>
+                    </div>
+                    <p className="text-sm text-gray-400">
+                      Número fijo para consultas de soporte (no rota, siempre disponible)
+                    </p>
+                    <div className="space-y-2">
+                      <Label className="text-base text-white font-medium">Teléfono de Soporte</Label>
+                      <Input
+                        type="tel"
+                        inputMode="numeric"
+                        value={supportPhone}
+                        onChange={(e) => setSupportPhone(sanitizePhone(e.target.value))}
+                        placeholder="Ingresá el número completo"
+                        className="h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white rounded-xl"
+                      />
+                      <p className="text-xs text-gray-400">Este número se usa para consultas generales y soporte</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-base text-white font-medium">Nombre de Soporte</Label>
+                      <Input
+                        type="text"
+                        value={supportName}
+                        onChange={(e) => setSupportName(e.target.value)}
+                        placeholder="Ingresá el nombre completo"
+                        className="h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white rounded-xl"
+                      />
+                      <p className="text-xs text-gray-400">Este nombre se usa para consultas generales y soporte</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-black/40 backdrop-blur-md border border-purple-600/20 rounded-xl p-6 space-y-6">
+                    <div className="flex items-center gap-3 mb-2">
+                      <Phone className="w-6 h-6 text-purple-500" strokeWidth={2.5} />
+                      <h2 className="text-2xl font-bold text-white neon-text">Números de Atención</h2>
                     </div>
 
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between py-2 border-b border-gray-800/50">
-                        <span className="text-gray-400">Crear usuarios:</span>
-                        <span className="text-white font-medium">
-                          {activeUserCreationEnabled ? "✓ Activado" : "✗ Desactivado"}
-                        </span>
+                    {/* Toggle principal de rotación */}
+                    <div className="flex items-center justify-between rounded-lg border border-purple-500/20 bg-black/30 p-4">
+                      <div className="space-y-1">
+                        <h3 className="text-lg font-semibold text-white">Sistema de Rotación</h3>
+                        <p className="text-sm text-gray-400">
+                          {rotationEnabled
+                            ? "Activo - Distribuye mensajes entre múltiples números"
+                            : "Desactivado - Solo un número fijo"}
+                        </p>
                       </div>
-                      <div className="flex justify-between py-2 border-b border-gray-800/50">
-                        <span className="text-gray-400">Temporizador:</span>
-                        <span className="text-white font-medium">{activeTransferTimer}s</span>
-                      </div>
-                      <div className="flex justify-between py-2 border-b border-gray-800/50">
-                        <span className="text-gray-400">Monto mínimo:</span>
-                        <span className="text-white font-medium">${activeMinAmount}</span>
-                      </div>
-                      {activeAlias && (
-                        <div className="flex justify-between py-2 border-b border-gray-800/50">
-                          <span className="text-gray-400">{activePaymentType === "alias" ? "Alias:" : "CBU:"}</span>
-                          <span className="text-white font-medium font-mono">{activeAlias}</span>
-                        </div>
-                      )}
-                      {activePhone && (
-                        <div className="flex justify-between py-2 border-b border-gray-800/50">
-                          <span className="text-gray-400">Atención:</span>
-                          <span className="text-white font-medium font-mono">{activePhone}</span>
-                        </div>
-                      )}
-                      {activeSupportPhone && (
-                        <div className="flex justify-between py-2 border-b border-gray-800/50">
-                          <span className="text-gray-400">Soporte:</span>
-                          <span className="text-white font-medium font-mono">{activeSupportPhone}</span>
-                        </div>
-                      )}
-                      {activePlatformUrl && (
-                        <div className="flex justify-between py-2 border-b border-gray-800/50">
-                          <span className="text-gray-400">URL Plataforma:</span>
-                          <span className="text-white font-medium truncate max-w-[200px]">{activePlatformUrl}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between py-2 border-b border-gray-800/50">
-                        <span className="text-gray-400">Bono Primera Carga:</span>
-                        <span className="text-white font-medium">
-                          {activeBonusEnabled ? `✓ ${activeBonusPercentage}%` : "✗ Desactivado"}
-                        </span>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setRotationEnabled(!rotationEnabled)}
+                        className={`relative inline-flex h-8 w-14 flex-shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ${
+                          rotationEnabled ? "bg-gradient-to-r from-purple-600 to-pink-600" : "bg-gray-600"
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition-transform duration-200 ${
+                            rotationEnabled ? "translate-x-7" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
                     </div>
 
-                    {/* Botón Salir */}
-                    <button
-                      onClick={handleLogout}
-                      className="w-full h-12 border-2 border-purple-600/40 hover:border-purple-500 hover:bg-purple-950/30 transition-all text-white font-bold text-base rounded-xl flex items-center justify-center gap-2 mt-6"
-                    >
-                      <LogOut className="w-5 h-5" strokeWidth={2.5} />
-                      Salir
-                    </button>
+                    {/* Configuración de modo - Solo si rotación ON */}
+                    {rotationEnabled && (
+                      <div className="space-y-4 rounded-lg border border-purple-500/20 bg-black/30 p-4">
+                        <h4 className="text-sm font-medium text-purple-300">Configuración de Rotación</h4>
+
+                        <div>
+                          <label className="mb-2 block text-sm text-gray-300">Modo de Rotación</label>
+                          <select
+                            value={rotationMode}
+                            onChange={(e) => setRotationMode(e.target.value as "clicks" | "time")}
+                            className="w-full rounded-lg border border-purple-500/30 bg-black/60 px-4 py-2 text-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                          >
+                            <option value="clicks">Por Clicks</option>
+                            <option value="time">Por Tiempo</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="mb-2 block text-sm text-gray-300">
+                            {rotationMode === "clicks" ? "Clicks por número" : "Minutos por número"}
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={rotationThreshold}
+                            onChange={(e) => setRotationThreshold(Math.max(1, Number(e.target.value)))}
+                            className="w-full rounded-lg border border-purple-500/30 bg-black/60 px-4 py-2 text-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Lista de números */}
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-medium text-purple-300">
+                        Lista de Números {!rotationEnabled && "(Solo 1 puede estar activo)"}
+                      </h4>
+
+                      {attentionNumbers.length === 0 ? (
+                        <div className="rounded-lg border border-dashed border-purple-500/30 bg-black/20 p-6 text-center">
+                          <p className="text-gray-400">No hay números configurados. Agregá uno abajo.</p>
+                        </div>
+                      ) : (
+                        attentionNumbers.map((number) => (
+                          <div
+                            key={number.id}
+                            className="flex items-center justify-between rounded-lg border border-purple-500/20 bg-black/30 p-3"
+                          >
+                            <div className="flex-1">
+                              <p className="font-medium text-white">{number.label}</p>
+                              <p className="text-sm text-gray-400">{number.phone}</p>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              {/* Toggle activo/inactivo */}
+                              <button
+                                type="button"
+                                onClick={() => handleToggleNumberActive(number.id)}
+                                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ${
+                                  number.active ? "bg-green-500" : "bg-gray-600"
+                                }`}
+                              >
+                                <span
+                                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform duration-200 ${
+                                    number.active ? "translate-x-6" : "translate-x-1"
+                                  }`}
+                                />
+                              </button>
+
+                              {/* Botón eliminar */}
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteNumber(number.id)}
+                                className="rounded-lg bg-red-500/20 px-3 py-1 text-sm text-red-400 hover:bg-red-500/30 transition-colors"
+                              >
+                                Eliminar
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    <div className="space-y-3">
+                      {!showAddNumberForm ? (
+                        <Button
+                          type="button"
+                          onClick={() => setShowAddNumberForm(true)}
+                          className="w-full bg-gradient-to-r from-purple-600/20 to-pink-600/20 hover:from-purple-600/40 hover:to-pink-600/40 border border-purple-500/30 text-purple-200"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Agregar Nuevo Número
+                        </Button>
+                      ) : (
+                        <div className="space-y-3 rounded-lg border border-purple-500/30 bg-black/20 p-4">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-medium text-purple-300">Agregar Nuevo Número</h4>
+                            <Button
+                              type="button"
+                              onClick={() => {
+                                setShowAddNumberForm(false)
+                                setNewNumberLabel("")
+                                setNewNumberPhone("")
+                              }}
+                              variant="ghost"
+                              size="sm"
+                              className="text-purple-400 hover:text-purple-300"
+                            >
+                              Cancelar
+                            </Button>
+                          </div>
+                          <div className="space-y-2">
+                            <Input
+                              type="text"
+                              value={newNumberLabel}
+                              onChange={(e) => setNewNumberLabel(e.target.value)}
+                              placeholder="Nombre (ej: JUAN)"
+                              className="bg-black/50 border-purple-600/40 focus:border-purple-500 text-white rounded-lg"
+                            />
+                            <Input
+                              type="tel"
+                              inputMode="numeric"
+                              value={newNumberPhone}
+                              onChange={(e) => setNewNumberPhone(sanitizePhone(e.target.value))}
+                              placeholder="543415481923"
+                              className="bg-black/50 border-purple-600/40 focus:border-purple-500 text-white rounded-lg"
+                            />
+                            <Button
+                              type="button"
+                              onClick={() => {
+                                handleAddNumber()
+                                setShowAddNumberForm(false)
+                              }}
+                              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                            >
+                              <Plus className="w-4 h-4 mr-2" />
+                              Agregar
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Configuración Activa (al final) */}
+                    <div className="bg-black/40 backdrop-blur-md border border-green-600/20 rounded-xl p-6 space-y-4">
+                      <div className="flex items-center gap-3 mb-3">
+                        <CheckCircle className="w-6 h-6 text-green-500" strokeWidth={2.5} />
+                        <h2 className="text-2xl font-bold text-white neon-text">Configuración Activa</h2>
+                      </div>
+
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between py-2 border-b border-gray-800/50">
+                          <span className="text-gray-400">Crear usuarios:</span>
+                          <span className="text-white font-medium">
+                            {activeUserCreationEnabled ? "✓ Activado" : "✗ Desactivado"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between py-2 border-b border-gray-800/50">
+                          <span className="text-gray-400">Temporizador:</span>
+                          <span className="text-white font-medium">{activeTransferTimer}s</span>
+                        </div>
+                        <div className="flex justify-between py-2 border-b border-gray-800/50">
+                          <span className="text-gray-400">Monto mínimo:</span>
+                          <span className="text-white font-medium">${activeMinAmount}</span>
+                        </div>
+                        {activeAlias && (
+                          <div className="flex justify-between py-2 border-b border-gray-800/50">
+                            <span className="text-gray-400">{activePaymentType === "alias" ? "Alias:" : "CBU:"}</span>
+                            <span className="text-white font-medium font-mono">{activeAlias}</span>
+                          </div>
+                        )}
+                        {activeSupportPhone && (
+                          <div className="flex justify-between py-2 border-b border-gray-800/50">
+                            <span className="text-gray-400">Soporte:</span>
+                            <span className="text-white font-medium font-mono">{activeSupportPhone}</span>
+                          </div>
+                        )}
+                        {activeSupportName && (
+                          <div className="flex justify-between py-2 border-b border-gray-800/50">
+                            <span className="text-gray-400">Nombre de Soporte:</span>
+                            <span className="text-white font-medium font-mono">{activeSupportName}</span>
+                          </div>
+                        )}
+                        {activePlatformUrl && (
+                          <div className="flex justify-between py-2 border-b border-gray-800/50">
+                            <span className="text-gray-400">URL Plataforma:</span>
+                            <span className="text-white font-medium truncate max-w-[200px]">{activePlatformUrl}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between py-2 border-b border-gray-800/50">
+                          <span className="text-gray-400">Bono Primera Carga:</span>
+                          <span className="text-white font-medium">
+                            {activeBonusEnabled ? `✓ ${activeBonusPercentage}%` : "✗ Desactivado"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Botón Salir */}
+                      <button
+                        onClick={handleLogout}
+                        className="w-full h-12 border-2 border-purple-600/40 hover:border-purple-500 hover:bg-purple-950/30 transition-all text-white font-bold text-base rounded-xl flex items-center justify-center gap-2 mt-6"
+                      >
+                        <LogOut className="w-5 h-5" strokeWidth={2.5} />
+                        Salir
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1001,6 +953,18 @@ export default function AdminPage() {
           )}
         </div>
       </div>
+
+      {isAuthenticated && (
+        <div className="fixed bottom-6 right-6 z-50">
+          <button
+            onClick={handleSave}
+            className="w-auto h-14 px-8 btn-gradient-animated text-white font-bold text-base rounded-xl transition-all flex items-center justify-center gap-2 shadow-2xl hover:shadow-xl shadow-purple-500/30"
+          >
+            <Save className="w-6 h-6" strokeWidth={2.5} />
+            Guardar Configuración
+          </button>
+        </div>
+      )}
     </div>
   )
 }
