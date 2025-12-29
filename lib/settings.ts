@@ -89,11 +89,12 @@ export async function getSettings(): Promise<Settings> {
   }
 }
 
-export async function updateSettings(updates: Partial<Settings>): Promise<Settings> {
+export async function updateSettings(updates: Record<string, unknown>): Promise<Settings> {
   try {
     const supabase = getSupabaseClient()
 
     const dbUpdates: Record<string, unknown> = {}
+
     if (updates.minAmount !== undefined) dbUpdates.min_amount = updates.minAmount
     if (updates.timerSeconds !== undefined) dbUpdates.timer_seconds = updates.timerSeconds
     if (updates.createUserEnabled !== undefined) dbUpdates.create_user_enabled = updates.createUserEnabled
@@ -108,18 +109,25 @@ export async function updateSettings(updates: Partial<Settings>): Promise<Settin
     if (updates.rotationMode !== undefined) dbUpdates.rotation_mode = updates.rotationMode
     if (updates.rotationThreshold !== undefined) dbUpdates.rotation_threshold = updates.rotationThreshold
 
-    if (updates.attentionNumbers !== undefined) {
-      updates.attentionNumbers.forEach((num, i) => {
-        const index = i + 1
-        if (index <= 9) {
-          dbUpdates[`attention_phone_${index}`] = num.phone || ""
-          dbUpdates[`attention_name_${index}`] = num.name || ""
-          dbUpdates[`attention_active_${index}`] = num.active ?? false
-        }
-      })
+    for (let i = 1; i <= 9; i++) {
+      const phoneKey = `attention_phone_${i}`
+      const nameKey = `attention_name_${i}`
+      const activeKey = `attention_active_${i}`
+
+      if (updates[phoneKey] !== undefined) {
+        dbUpdates[phoneKey] = updates[phoneKey]
+      }
+      if (updates[nameKey] !== undefined) {
+        dbUpdates[nameKey] = updates[nameKey]
+      }
+      if (updates[activeKey] !== undefined) {
+        dbUpdates[activeKey] = updates[activeKey]
+      }
     }
 
     dbUpdates.updated_at = new Date().toISOString()
+
+    console.log("[v0] updateSettings - dbUpdates:", JSON.stringify(dbUpdates, null, 2))
 
     const { data, error } = await supabase.from("settings").update(dbUpdates).eq("id", 1).select().single()
 
@@ -128,9 +136,7 @@ export async function updateSettings(updates: Partial<Settings>): Promise<Settin
       throw new Error(`Failed to update settings: ${error.message}`)
     }
 
-    if (!data) {
-      throw new Error("Settings update returned no data")
-    }
+    console.log("[v0] updateSettings - data returned:", JSON.stringify(data, null, 2))
 
     const attentionNumbers: AttentionNumber[] = []
     for (let i = 1; i <= 9; i++) {

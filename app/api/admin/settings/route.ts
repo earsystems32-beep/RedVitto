@@ -34,7 +34,6 @@ export async function POST(request: Request) {
       rotationEnabled,
       rotationMode,
       rotationThreshold,
-      rotationNumbers,
     } = body
 
     if (!pin || pin !== adminPin) {
