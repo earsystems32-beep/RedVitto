@@ -58,6 +58,12 @@ export async function POST(request: Request) {
     if (incrementClick) {
       const activeNumbers = getActiveNumbers(settings)
 
+      console.log("[v0 DEBUG Rotation] ===== INCREMENTANDO CLICK =====")
+      console.log("[v0 DEBUG Rotation] Números activos:", activeNumbers)
+      console.log("[v0 DEBUG Rotation] Click count actual:", settings.rotation_click_count)
+      console.log("[v0 DEBUG Rotation] Threshold:", settings.rotation_threshold)
+      console.log("[v0 DEBUG Rotation] Índice actual:", settings.current_rotation_index)
+
       if (activeNumbers.length === 0) {
         return NextResponse.json({ success: true, phone: settings.phone || "" })
       }
@@ -65,8 +71,14 @@ export async function POST(request: Request) {
       const newClickCount = (settings.rotation_click_count || 0) + 1
       let newIndex = settings.current_rotation_index || 0
 
+      console.log("[v0 DEBUG Rotation] Nuevo click count:", newClickCount)
+      console.log("[v0 DEBUG Rotation] ¿Debería rotar?", newClickCount >= settings.rotation_threshold)
+
       if (newClickCount >= settings.rotation_threshold) {
         newIndex = (newIndex + 1) % activeNumbers.length
+        console.log("[v0 DEBUG Rotation] ROTANDO a índice:", newIndex)
+        console.log("[v0 DEBUG Rotation] Nuevo número:", activeNumbers[newIndex])
+
         const { error: updateError } = await supabase
           .from("settings")
           .update({
@@ -76,9 +88,14 @@ export async function POST(request: Request) {
           .eq("id", 1)
 
         if (updateError) {
+          console.error("[v0 DEBUG Rotation] Error al actualizar:", updateError)
           return NextResponse.json({ error: "Error al actualizar rotación" }, { status: 500 })
         }
+
+        console.log("[v0 DEBUG Rotation] ✅ Rotación actualizada en DB")
       } else {
+        console.log("[v0 DEBUG Rotation] Solo incrementando contador, no rota todavía")
+
         const { error: updateError } = await supabase
           .from("settings")
           .update({
@@ -87,17 +104,22 @@ export async function POST(request: Request) {
           .eq("id", 1)
 
         if (updateError) {
+          console.error("[v0 DEBUG Rotation] Error al actualizar contador:", updateError)
           return NextResponse.json({ error: "Error al actualizar contador" }, { status: 500 })
         }
       }
 
       const selectedNumber = activeNumbers[newIndex]
+      console.log("[v0 DEBUG Rotation] Número seleccionado final:", selectedNumber)
+      console.log("[v0 DEBUG Rotation] ===== FIN ROTACIÓN =====")
+
       return NextResponse.json({
         success: true,
         phone: selectedNumber.phone,
         label: selectedNumber.name,
         clickCount: newClickCount >= settings.rotation_threshold ? 0 : newClickCount,
         threshold: settings.rotation_threshold,
+        currentIndex: newIndex,
       })
     }
 

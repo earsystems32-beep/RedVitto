@@ -887,7 +887,8 @@ export default function AdminPage() {
                             className="w-full rounded-lg border border-purple-500/30 bg-black/60 px-4 py-2 text-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
                           />
                         </div>
-                        <div className="mt-4 rounded-lg border border-green-500/30 bg-gradient-to-br from-green-500/10 to-purple-500/10 p-4 space-y-3">
+                        {/* ELIMINADO: Panel de "Estado en Tiempo Real" duplicado */}
+                        {/* <div className="mt-4 rounded-lg border border-green-500/30 bg-gradient-to-br from-green-500/10 to-purple-500/10 p-4 space-y-3">
                           <div className="flex items-center gap-2 mb-3">
                             <div className="flex h-2 w-2">
                               <span className="absolute inline-flex h-2 w-2 animate-ping rounded-full bg-green-400 opacity-75"></span>
@@ -956,73 +957,76 @@ export default function AdminPage() {
                                 ` - ${attentionNumbers[currentRotationIndex]?.phone}`}
                             </p>
                           </div>
-                        </div>
+                        </div> */}
                       </div>
                     )}
 
                     {/* Lista de números */}
-                    <div className="space-y-3">
-                      <h4 className="text-sm font-medium text-purple-300">
-                        Lista de Números {!rotationEnabled && "(Solo 1 puede estar activo)"}
-                      </h4>
+                    <div className="space-y-4">
+                      <h3 className="text-base font-medium text-gray-300">
+                        Lista de Números
+                        {!rotationEnabled && " (Solo 1 puede estar activo)"}
+                      </h3>
 
-                      {rotationEnabled && attentionNumbers.filter((n) => n.phone.trim() !== "").length > 0 && (
-                        <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="relative flex h-3 w-3">
-                                <span className="absolute inline-flex h-3 w-3 animate-ping rounded-full bg-green-400 opacity-75"></span>
-                                <span className="relative inline-flex h-3 w-3 rounded-full bg-green-500"></span>
-                              </div>
-                              <div>
-                                <p className="text-sm font-semibold text-green-300">
-                                  {rotationMode === "clicks" ? "Rotación por Clicks" : "Rotación por Tiempo"}
-                                </p>
-                                <p className="text-xs text-gray-400">
-                                  Número activo: #{currentRotationIndex + 1}
-                                  {attentionNumbers[currentRotationIndex]?.label &&
-                                    ` - ${attentionNumbers[currentRotationIndex].label}`}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              {rotationMode === "clicks" ? (
-                                <>
-                                  <p className="text-2xl font-bold text-green-300">{rotationClickCount}</p>
-                                  <p className="text-xs text-gray-400">de {rotationThreshold} clicks</p>
-                                </>
-                              ) : (
-                                <>
-                                  <p className="text-2xl font-bold text-green-300">{timeRemaining}</p>
-                                  <p className="text-xs text-gray-400">
-                                    {timeRemaining === 1 ? "minuto" : "minutos"} restantes
+                      {/* Panel de estado de rotación - único panel visible */}
+                      {rotationEnabled &&
+                        attentionNumbers.filter((n) => n.phone && n.phone.trim() !== "").length > 0 && (
+                          <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="relative flex h-3 w-3">
+                                  <span className="absolute inline-flex h-3 w-3 animate-ping rounded-full bg-green-400 opacity-75"></span>
+                                  <span className="relative inline-flex h-3 w-3 rounded-full bg-green-500"></span>
+                                </div>
+                                <div>
+                                  <p className="text-sm font-semibold text-green-300">
+                                    {rotationMode === "clicks" ? "Rotación por Clicks" : "Rotación por Tiempo"}
                                   </p>
-                                </>
-                              )}
+                                  <p className="text-xs text-gray-400">
+                                    Número activo: #{currentRotationIndex + 1}
+                                    {attentionNumbers[currentRotationIndex]?.label &&
+                                      ` - ${attentionNumbers[currentRotationIndex].label}`}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                {rotationMode === "clicks" ? (
+                                  <>
+                                    <p className="text-2xl font-bold text-green-300">{rotationClickCount}</p>
+                                    <p className="text-xs text-gray-400">de {rotationThreshold} clicks</p>
+                                  </>
+                                ) : (
+                                  <>
+                                    <p className="text-2xl font-bold text-green-300">{timeRemaining}</p>
+                                    <p className="text-xs text-gray-400">
+                                      {timeRemaining === 1 ? "minuto" : "minutos"} restantes
+                                    </p>
+                                  </>
+                                )}
+                              </div>
                             </div>
+                            {rotationMode === "clicks" && (
+                              <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/50">
+                                <div
+                                  className="h-full rounded-full bg-gradient-to-r from-green-600 to-emerald-500 transition-all duration-300"
+                                  style={{
+                                    width: `${Math.min(100, (rotationClickCount / rotationThreshold) * 100)}%`,
+                                  }}
+                                />
+                              </div>
+                            )}
+                            {rotationMode === "time" && (
+                              <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/50">
+                                <div
+                                  className="h-full rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 transition-all duration-300"
+                                  style={{
+                                    width: `${Math.max(0, (timeRemaining / rotationThreshold) * 100)}%`,
+                                  }}
+                                />
+                              </div>
+                            )}
                           </div>
-                          {rotationMode === "clicks" && (
-                            <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/50">
-                              <div
-                                className="h-full rounded-full bg-gradient-to-r from-green-600 to-emerald-500 transition-all duration-300"
-                                style={{
-                                  width: `${Math.min(100, (rotationClickCount / rotationThreshold) * 100)}%`,
-                                }}
-                              />
-                            </div>
-                          )}
-                          {rotationMode === "time" && (
-                            <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/50">
-                              <div
-                                className="h-full rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 transition-all duration-300"
-                                style={{
-                                  width: `${Math.max(0, (timeRemaining / rotationThreshold) * 100)}%`,
-                                }}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      )}
+                        )}
 
                       {attentionNumbers.filter((n) => n.phone.trim() !== "").length === 0 ? (
                         <div className="rounded-xl border border-dashed border-purple-500/30 bg-purple-500/5 p-8 text-center">
