@@ -380,28 +380,35 @@ export default function AdminPage() {
         attentionColumns[`attention_active_${i}`] = number?.active || false
       }
 
+      console.log("[v0] attentionNumbers array:", attentionNumbers)
+      console.log("[v0] attentionColumns construidas:", attentionColumns)
+
+      const bodyData = {
+        alias: alias.trim(),
+        paymentType: paymentType,
+        createUserEnabled: userCreationEnabled,
+        timerSeconds: transferTimerNum,
+        minAmount: minAmountNum,
+        support_phone: supportPhoneValue,
+        platformUrl: urlTrimmed,
+        bonusEnabled: bonusEnabled,
+        bonusPercentage: bonusPercentageNum,
+        pin: adminPin,
+        rotationEnabled: rotationEnabled,
+        rotationMode: rotationMode,
+        rotationThreshold: rotationThreshold,
+        ...attentionColumns,
+      }
+
+      console.log("[v0] Body completo que se enviará a la API:", bodyData)
+
       const response = await fetch("/api/admin/settings", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         credentials: "include",
-        body: JSON.stringify({
-          alias: alias.trim(),
-          paymentType: paymentType,
-          createUserEnabled: userCreationEnabled,
-          timerSeconds: transferTimerNum,
-          minAmount: minAmountNum,
-          support_phone: supportPhoneValue,
-          platformUrl: urlTrimmed,
-          bonusEnabled: bonusEnabled,
-          bonusPercentage: bonusPercentageNum,
-          pin: adminPin,
-          rotationEnabled: rotationEnabled,
-          rotationMode: rotationMode,
-          rotationThreshold: rotationThreshold,
-          ...attentionColumns,
-        }),
+        body: JSON.stringify(bodyData),
       })
 
       if (!response.ok) {
@@ -409,6 +416,7 @@ export default function AdminPage() {
       }
 
       const data = await response.json()
+      console.log("[v0] Respuesta de la API:", data)
 
       if (data.success) {
         setActiveAlias(alias.trim())
