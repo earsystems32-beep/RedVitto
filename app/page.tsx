@@ -344,6 +344,8 @@ export default function TheCrown() {
   const changeStep = useCallback(
     (newStep: number, direction: "forward" | "back" = "forward") => {
       setIsStepAnimating(false)
+      window.scrollTo({ top: 0, behavior: "smooth" })
+
       setTimeout(() => {
         setStep(newStep)
         setIsStepAnimating(true)
@@ -742,7 +744,8 @@ Gracias! 🎰👑`
         </div>
       )}
 
-      <div className="container relative z-10 mx-auto max-w-md pt-8 pb-24 px-6">
+      {/* Reducir padding del container principal para más espacio */}
+      <div className="container relative z-10 mx-auto max-w-md pt-4 pb-12 px-4">
         {isDropdownOpen && (
           <div className="fixed inset-0 z-50 bg-transparent" onClick={() => setIsDropdownOpen(false)} />
         )}
@@ -818,17 +821,18 @@ Gracias! 🎰👑`
               animation: isStepAnimating ? "scalePopIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
             }}
           >
-            <div className="text-center space-y-16">
-              <div className="space-y-4">
-                <Crown className="w-20 h-20 text-purple-500 mx-auto mb-6" strokeWidth={1.5} />
-                <h1 className="text-6xl font-bold tracking-tight text-white">TheCrown</h1>
+            {/* Reducir tamaños de títulos y espaciados en paso 1 */}
+            <div className="text-center space-y-12">
+              <div className="space-y-3">
+                <Crown className="w-16 h-16 text-purple-500 mx-auto mb-4" strokeWidth={1.5} />
+                <h1 className="text-5xl font-bold tracking-tight text-white">TheCrown</h1>
               </div>
 
-              <div className="space-y-5">
+              <div className="space-y-4">
                 {userCreationEnabled && (
                   <button
                     onClick={() => changeStep(2, "forward")}
-                    className="w-full h-14 btn-gradient-animated text-white font-semibold text-lg rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(167,139,250,0.6)]"
+                    className="w-full h-12 btn-gradient-animated text-white font-semibold text-base rounded-xl transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(167,139,250,0.6)]"
                   >
                     Crear Usuario
                   </button>
@@ -882,19 +886,20 @@ Gracias! 🎰👑`
               animation: isStepAnimating ? "slideInFromRight 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
             }}
           >
-            <div className={`space-y-8 transition-all duration-500 ${isStepAnimating ? "opacity-100" : "opacity-0"}`}>
-              <div className="text-center space-y-2">
-                <div className="inline-block px-4 py-2 rounded-full bg-purple-950/50 border border-purple-600/40 mb-4">
-                  <span className="text-sm font-bold text-purple-400">Paso 1 de 5</span>
+            {/* Reducir espaciado en paso 2 */}
+            <div className={`space-y-6 transition-all duration-500 ${isStepAnimating ? "opacity-100" : "opacity-0"}`}>
+              <div className="text-center space-y-1">
+                <div className="inline-block px-3 py-1.5 rounded-full bg-purple-950/50 border border-purple-600/40 mb-3">
+                  <span className="text-xs font-bold text-purple-400">Paso 1 de 5</span>
                 </div>
 
-                <h2 className="text-3xl font-black text-white">Crear Usuario</h2>
-                <p className="text-gray-400 text-sm">Completá tus datos para comenzar</p>
+                <h2 className="text-2xl font-black text-white">Crear Usuario</h2>
+                <p className="text-gray-400 text-xs">Completá tus datos para comenzar</p>
               </div>
 
-              <form onSubmit={handleCreateUser} className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="apodo" className="text-base text-gray-300 font-medium">
+              <form onSubmit={handleCreateUser} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="apodo" className="text-sm text-gray-300 font-medium">
                     Apodo
                   </Label>
                   <Input
@@ -903,14 +908,14 @@ Gracias! 🎰👑`
                     value={apodo}
                     onChange={handleApodoChange}
                     placeholder="Ingresá tu apodo"
-                    className="h-14 text-base bg-gray-900 border-gray-800 focus:border-purple-600 transition-colors text-white placeholder:text-gray-600 rounded-xl"
+                    className="h-11 text-sm bg-gray-900 border-gray-800 focus:border-purple-600 transition-colors text-white placeholder:text-gray-600 rounded-xl"
                     required
                   />
                   {apodoError && <p className="text-red-500 text-xs mt-1">{apodoError}</p>}
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="digitos" className="text-base text-gray-300 font-medium">
+                <div className="space-y-1.5">
+                  <Label htmlFor="digitos" className="text-sm text-gray-300 font-medium">
                     Últimos 4 dígitos del celular
                   </Label>
                   <Input
@@ -920,7 +925,7 @@ Gracias! 🎰👑`
                     value={digitos}
                     onChange={handleDigitosChange}
                     placeholder="Ingresá tus 4 dígitos"
-                    className="h-14 text-base bg-gray-900 border-gray-800 focus:border-purple-600 transition-colors text-white placeholder:text-gray-600 rounded-xl"
+                    className="h-11 text-sm bg-gray-900 border-gray-800 focus:border-purple-600 transition-colors text-white placeholder:text-gray-600 rounded-xl"
                     maxLength={4}
                     required
                   />
@@ -928,18 +933,18 @@ Gracias! 🎰👑`
                 </div>
 
                 {/* Plataforma fija en Ganamos */}
-                <div className="space-y-2">
-                  <Label className="text-base text-gray-300 font-medium">Plataforma</Label>
-                  <div className="h-14 bg-gray-900 border border-gray-800 rounded-xl flex items-center px-4">
-                    <span className="text-base text-white">Ganamos</span>
+                <div className="space-y-1.5">
+                  <Label className="text-sm text-gray-300 font-medium">Plataforma</Label>
+                  <div className="h-11 bg-gray-900 border border-gray-800 rounded-xl flex items-center px-4">
+                    <span className="text-sm text-white">Ganamos</span>
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-2">
                   <button
                     type="submit" // Changed to type="submit" to use form's onSubmit
                     disabled={!isFormValid}
-                    className={`w-full h-14 font-semibold text-base rounded-xl transition-all ${
+                    className={`w-full h-11 font-semibold text-sm rounded-xl transition-all ${
                       isFormValid
                         ? "btn-gradient-animated text-white hover:scale-105 hover:shadow-[0_0_40px_rgba(167,139,250,0.6)]"
                         : "bg-gray-900 text-gray-600 cursor-not-allowed"
@@ -950,9 +955,9 @@ Gracias! 🎰👑`
 
                   <button
                     onClick={() => changeStep(1, "back")}
-                    className="w-full h-14 text-base border border-gray-800 hover:border-purple-600 transition-all text-white font-medium rounded-xl"
+                    className="w-full h-11 text-sm border border-gray-800 hover:border-purple-600 transition-all text-white font-medium rounded-xl"
                   >
-                    <ArrowLeft className="w-5 h-5 inline mr-2" strokeWidth={2} />
+                    <ArrowLeft className="w-4 h-4 inline mr-2" strokeWidth={2} />
                     Volver
                   </button>
                 </div>
@@ -970,42 +975,43 @@ Gracias! 🎰👑`
               isStepAnimating ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
             }`}
           >
-            <div className="space-y-6">
+            {/* Reducir tamaños en paso 3 (términos) */}
+            <div className="space-y-5">
               <div className="text-center">
-                <div className="inline-block px-4 py-2 rounded-full bg-purple-950/50 border border-purple-600/40 mb-4">
-                  <span className="text-sm font-bold text-purple-400">Paso 2 de 5</span>
+                <div className="inline-block px-3 py-1.5 rounded-full bg-purple-950/50 border border-purple-600/40 mb-3">
+                  <span className="text-xs font-bold text-purple-400">Paso 2 de 5</span>
                 </div>
-                <h2 className="text-3xl font-bold text-white mb-2">Antes de continuar</h2>
-                <p className="text-gray-400 text-sm">Conocé los límites y condiciones</p>
+                <h2 className="text-2xl font-bold text-white mb-1">Antes de continuar</h2>
+                <p className="text-gray-400 text-xs">Conocé los límites y condiciones</p>
               </div>
 
-              <div className="space-y-4 p-6 rounded-2xl border border-purple-600/30 bg-black/40">
+              <div className="space-y-3 p-4 rounded-2xl border border-purple-600/30 bg-black/40">
                 {/* Sección de límites */}
-                <div className="space-y-4">
-                  <div className="flex items-start gap-3">
-                    <Trophy className="w-6 h-6 text-purple-400 flex-shrink-0 mt-1" strokeWidth={2} />
+                <div className="space-y-3">
+                  <div className="flex items-start gap-2">
+                    <Trophy className="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" strokeWidth={2} />
                     <div className="flex-1">
-                      <h3 className="font-bold text-white text-lg mb-1">Premio máximo por jugada</h3>
-                      <p className="text-gray-300 text-base">$1.000.000</p>
+                      <h3 className="font-bold text-white text-base mb-0.5">Premio máximo por jugada</h3>
+                      <p className="text-gray-300 text-sm">$1.000.000</p>
                     </div>
                   </div>
 
                   <div className="h-px bg-purple-600/20" />
 
-                  <div className="flex items-start gap-3">
-                    <Wallet className="w-6 h-6 text-purple-400 flex-shrink-0 mt-1" strokeWidth={2} />
+                  <div className="flex items-start gap-2">
+                    <Wallet className="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" strokeWidth={2} />
                     <div className="flex-1">
-                      <h3 className="font-bold text-white text-lg mb-2">Límites de retiro</h3>
-                      <ul className="space-y-1.5 text-gray-300 text-base">
-                        <li className="flex items-center gap-2">
+                      <h3 className="font-bold text-white text-base mb-1">Límites de retiro</h3>
+                      <ul className="space-y-1 text-gray-300 text-sm">
+                        <li className="flex items-center gap-1.5">
                           <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
                           Máximo 2 retiros por día
                         </li>
-                        <li className="flex items-center gap-2">
+                        <li className="flex items-center gap-1.5">
                           <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
                           $125.000 por retiro
                         </li>
-                        <li className="flex items-center gap-2">
+                        <li className="flex items-center gap-1.5">
                           <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
                           Total diario: $250.000
                         </li>
@@ -1016,31 +1022,31 @@ Gracias! 🎰👑`
                   {bonusEnabled && bonusPercentage > 0 && (
                     <>
                       <div className="h-px bg-purple-600/20" />
-                      <div className="flex items-start gap-3">
-                        <Gift className="w-6 h-6 text-purple-400 flex-shrink-0 mt-1" strokeWidth={2} />
+                      <div className="flex items-start gap-2">
+                        <Gift className="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" strokeWidth={2} />
                         <div className="flex-1">
-                          <h3 className="font-bold text-white text-lg mb-1">Bono especial</h3>
-                          <p className="text-gray-300 text-base mb-2">
+                          <h3 className="font-bold text-white text-base mb-0.5">Bono especial</h3>
+                          <p className="text-gray-300 text-sm mb-1">
                             Recibís un <strong className="text-purple-400">{bonusPercentage}% adicional</strong> en tu
                             primera carga
                           </p>
-                          <p className="text-amber-400 text-sm font-medium">El bono no forma parte del premio</p>
+                          <p className="text-amber-400 text-xs font-medium">El bono no forma parte del premio</p>
                         </div>
                       </div>
                     </>
                   )}
                 </div>
 
-                <div className="h-px bg-purple-600/20 mt-4" />
+                <div className="h-px bg-purple-600/20 mt-3" />
 
-                <label className="flex items-start gap-3 cursor-pointer group p-4 rounded-xl hover:bg-purple-950/20 transition-all">
+                <label className="flex items-start gap-2 cursor-pointer group p-3 rounded-xl hover:bg-purple-950/20 transition-all">
                   <input
                     type="checkbox"
                     checked={conditionsAccepted}
                     onChange={(e) => setConditionsAccepted(e.target.checked)}
-                    className="mt-1 w-5 h-5 rounded border-purple-600/40 bg-black/50 text-purple-600 focus:ring-purple-600 focus:ring-offset-0"
+                    className="mt-1 w-4 h-4 rounded border-purple-600/40 bg-black/50 text-purple-600 focus:ring-purple-600 focus:ring-offset-0"
                   />
-                  <span className="text-sm text-gray-300 group-hover:text-white transition-colors">
+                  <span className="text-xs text-gray-300 group-hover:text-white transition-colors">
                     Acepto los términos y condiciones
                   </span>
                 </label>
@@ -1049,7 +1055,7 @@ Gracias! 🎰👑`
                 <button
                   onClick={() => changeStep(5, "forward")}
                   disabled={!conditionsAccepted}
-                  className="w-full h-14 btn-gradient-animated text-white font-semibold text-base rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 mt-4"
+                  className="w-full h-12 btn-gradient-animated text-white font-semibold text-sm rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 mt-3"
                 >
                   Continuar
                 </button>
@@ -1057,9 +1063,9 @@ Gracias! 🎰👑`
 
               <button
                 onClick={() => changeStep(2, "back")}
-                className="w-full h-12 text-base border border-gray-800 hover:border-purple-600 transition-all text-white font-medium rounded-xl"
+                className="w-full h-11 text-sm border border-gray-800 hover:border-purple-600 transition-all text-white font-medium rounded-xl"
               >
-                <ArrowLeft className="w-5 h-5 inline mr-2" strokeWidth={2} />
+                <ArrowLeft className="w-4 h-4 inline mr-2" strokeWidth={2} />
                 Volver
               </button>
             </div>
@@ -1075,11 +1081,11 @@ Gracias! 🎰👑`
           >
             <div className="space-y-6">
               <div className="text-center">
-                <div className="inline-block px-4 py-2 rounded-full bg-purple-950/50 border border-purple-600/40 mb-4">
-                  <span className="text-sm font-bold text-purple-400">Paso 3 de 5</span>
+                <div className="inline-block px-3 py-1.5 rounded-full bg-purple-950/50 border border-purple-600/40 mb-3">
+                  <span className="text-xs font-bold text-purple-400">Paso 3 de 5</span>
                 </div>
-                <h2 className="text-3xl font-bold text-white mb-2">Enviá tu carga</h2>
-                <p className="text-gray-400 text-sm">Realizá la transferencia</p>
+                <h2 className="text-2xl font-bold text-white mb-1">Enviá tu carga</h2>
+                <p className="text-gray-400 text-xs">Realizá la transferencia</p>
               </div>
 
               <div className="space-y-4 p-6 rounded-2xl border border-purple-600/30 bg-black/40">
@@ -1093,7 +1099,7 @@ Gracias! 🎰👑`
                 <div className="space-y-3">
                   <Label className="text-lg text-white font-bold text-center block">Alias</Label>
                   <div className="w-full text-center p-4 rounded-xl bg-purple-950/30 border-2 border-purple-600/50">
-                    <p className="text-3xl font-black text-purple-400 tracking-wide">{alias || "No configurado"}</p>
+                    <p className="font-black text-purple-400 tracking-wide text-xl">{alias || "No configurado"}</p>
                   </div>
                   <button
                     onClick={() => {
@@ -1160,11 +1166,11 @@ Gracias! 🎰👑`
           >
             <div className="space-y-6">
               <div className="text-center">
-                <div className="inline-block px-4 py-2 rounded-full bg-purple-950/50 border border-purple-600/40 mb-4">
-                  <span className="text-sm font-bold text-purple-400">Paso 4 de 5</span>
+                <div className="inline-block px-3 py-1.5 rounded-full bg-purple-950/50 border border-purple-600/40 mb-3">
+                  <span className="text-xs font-bold text-purple-400">Paso 4 de 5</span>
                 </div>
-                <h2 className="text-3xl font-bold text-white mb-2">Guardá nuestro contacto</h2>
-                <p className="text-gray-400 text-sm">Es necesario para continuar</p>
+                <h2 className="text-2xl font-bold text-white mb-1">Guardá nuestro contacto</h2>
+                <p className="text-gray-400 text-xs">Es necesario para continuar</p>
               </div>
 
               <div className="space-y-4 p-6 rounded-2xl border border-purple-600/30 bg-black/40">

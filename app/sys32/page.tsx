@@ -46,7 +46,6 @@ export default function AdminPage() {
   const [cbuError, setCbuError] = useState("")
 
   const [supportPhone, setSupportPhone] = useState("")
-  const [supportName, setSupportName] = useState("")
   const [platformUrl, setPlatformUrl] = useState("https://ganamos.sbs")
   const [userCreationEnabled, setUserCreationEnabled] = useState(true)
   const [transferTimer, setTransferTimer] = useState("30")
@@ -62,7 +61,6 @@ export default function AdminPage() {
   const [activeTransferTimer, setActiveTransferTimer] = useState(30)
   const [activeMinAmount, setActiveMinAmount] = useState(2000)
   const [activeSupportPhone, setActiveSupportPhone] = useState("")
-  const [activeSupportName, setActiveSupportName] = useState("")
   const [activePlatformUrl, setActivePlatformUrl] = useState("https://ganamos.sbs")
   const [activeBonusEnabled, setActiveBonusEnabled] = useState(true)
   const [activeBonusPercentage, setActiveBonusPercentage] = useState(25)
@@ -148,7 +146,6 @@ export default function AdminPage() {
         setActiveTransferTimer(settings.timerSeconds ?? 30)
         setActiveMinAmount(settings.minAmount ?? 2000)
         setActiveSupportPhone(settings.support_phone || "")
-        setActiveSupportName(settings.support_name || "")
         setActivePlatformUrl(settings.platformUrl || "https://ganamos.sbs")
         setActiveBonusEnabled(settings.bonusEnabled ?? true)
         setActiveBonusPercentage(settings.bonusPercentage ?? 25)
@@ -159,7 +156,6 @@ export default function AdminPage() {
         setTransferTimer(String(settings.timerSeconds ?? 30))
         setMinAmount(String(settings.minAmount ?? 2000))
         setSupportPhone(settings.support_phone || "")
-        setSupportName(settings.support_name || "")
         setPlatformUrl(settings.platformUrl || "https://ganamos.sbs")
         setBonusEnabled(settings.bonusEnabled ?? true)
         setBonusPercentage(String(settings.bonusPercentage ?? 25))
@@ -398,7 +394,6 @@ export default function AdminPage() {
           timerSeconds: transferTimerNum,
           minAmount: minAmountNum,
           support_phone: supportPhoneValue,
-          support_name: supportName.trim(),
           platformUrl: urlTrimmed,
           bonusEnabled: bonusEnabled,
           bonusPercentage: bonusPercentageNum,
@@ -423,7 +418,6 @@ export default function AdminPage() {
         setActiveTransferTimer(transferTimerNum)
         setActiveMinAmount(minAmountNum)
         setActiveSupportPhone(supportPhoneValue)
-        setActiveSupportName(supportName.trim())
         setActivePlatformUrl(urlTrimmed)
         setActiveBonusEnabled(bonusEnabled)
         setActiveBonusPercentage(bonusPercentageNum)
@@ -717,21 +711,10 @@ export default function AdminPage() {
                         inputMode="numeric"
                         value={supportPhone}
                         onChange={(e) => setSupportPhone(sanitizePhone(e.target.value))}
-                        placeholder="Ingresá el número completo"
+                        placeholder="Ingresá el número completo (ej: 543415481923)"
                         className="h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white rounded-xl"
                       />
                       <p className="text-xs text-gray-400">Este número se usa para consultas generales y soporte</p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-base text-white font-medium">Nombre de Soporte</Label>
-                      <Input
-                        type="text"
-                        value={supportName}
-                        onChange={(e) => setSupportName(e.target.value)}
-                        placeholder="Ingresá el nombre completo"
-                        className="h-14 text-base bg-black/50 border-purple-600/40 focus:border-purple-500 transition-all text-white rounded-xl"
-                      />
-                      <p className="text-xs text-gray-400">Este nombre se usa para consultas generales y soporte</p>
                     </div>
                   </div>
 
@@ -804,48 +787,50 @@ export default function AdminPage() {
                         Lista de Números {!rotationEnabled && "(Solo 1 puede estar activo)"}
                       </h4>
 
-                      {attentionNumbers.length === 0 ? (
+                      {attentionNumbers.filter((n) => n.phone.trim() !== "").length === 0 ? (
                         <div className="rounded-lg border border-dashed border-purple-500/30 bg-black/20 p-6 text-center">
                           <p className="text-gray-400">No hay números configurados. Agregá uno abajo.</p>
                         </div>
                       ) : (
-                        attentionNumbers.map((number) => (
-                          <div
-                            key={number.id}
-                            className="flex items-center justify-between rounded-lg border border-purple-500/20 bg-black/30 p-3"
-                          >
-                            <div className="flex-1">
-                              <p className="font-medium text-white">{number.label}</p>
-                              <p className="text-sm text-gray-400">{number.phone}</p>
-                            </div>
+                        attentionNumbers
+                          .filter((n) => n.phone.trim() !== "")
+                          .map((number) => (
+                            <div
+                              key={number.id}
+                              className="flex items-center justify-between rounded-lg border border-purple-500/20 bg-black/30 p-3"
+                            >
+                              <div className="flex-1">
+                                <p className="font-medium text-white">{number.label}</p>
+                                <p className="text-sm text-gray-400">{number.phone}</p>
+                              </div>
 
-                            <div className="flex items-center gap-3">
-                              {/* Toggle activo/inactivo */}
-                              <button
-                                type="button"
-                                onClick={() => handleToggleNumberActive(number.id)}
-                                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ${
-                                  number.active ? "bg-green-500" : "bg-gray-600"
-                                }`}
-                              >
-                                <span
-                                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform duration-200 ${
-                                    number.active ? "translate-x-6" : "translate-x-1"
+                              <div className="flex items-center gap-3">
+                                {/* Toggle activo/inactivo */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleNumberActive(number.id)}
+                                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ${
+                                    number.active ? "bg-green-500" : "bg-gray-600"
                                   }`}
-                                />
-                              </button>
+                                >
+                                  <span
+                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
+                                      number.active ? "translate-x-6" : "translate-x-1"
+                                    }`}
+                                  />
+                                </button>
 
-                              {/* Botón eliminar */}
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteNumber(number.id)}
-                                className="rounded-lg bg-red-500/20 px-3 py-1 text-sm text-red-400 hover:bg-red-500/30 transition-colors"
-                              >
-                                Eliminar
-                              </button>
+                                {/* Botón eliminar */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteNumber(number.id)}
+                                  className="px-3 py-1 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"
+                                >
+                                  Eliminar
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        ))
+                          ))
                       )}
                     </div>
 
@@ -941,12 +926,6 @@ export default function AdminPage() {
                           <div className="flex justify-between py-2 border-b border-gray-800/50">
                             <span className="text-gray-400">Soporte:</span>
                             <span className="text-white font-medium font-mono">{activeSupportPhone}</span>
-                          </div>
-                        )}
-                        {activeSupportName && (
-                          <div className="flex justify-between py-2 border-b border-gray-800/50">
-                            <span className="text-gray-400">Nombre de Soporte:</span>
-                            <span className="text-white font-medium font-mono">{activeSupportName}</span>
                           </div>
                         )}
                         {activePlatformUrl && (

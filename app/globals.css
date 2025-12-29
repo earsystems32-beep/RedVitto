@@ -154,6 +154,8 @@
   html {
     overscroll-behavior: none;
     height: 100%;
+    /* Aplicar zoom out visual global */
+    font-size: 14px;
   }
 
   body {
@@ -167,6 +169,8 @@
     /* Agregando fondo con partículas animadas */
     position: relative;
     overflow-x: hidden;
+    /* Ajustar scroll para comenzar arriba */
+    scroll-behavior: smooth;
   }
 
   /* Agregando partículas flotantes en el fondo */
