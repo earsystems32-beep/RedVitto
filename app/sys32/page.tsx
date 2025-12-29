@@ -887,26 +887,75 @@ export default function AdminPage() {
                             className="w-full rounded-lg border border-purple-500/30 bg-black/60 px-4 py-2 text-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
                           />
                         </div>
-                        {/* Mostrar información de rotación en tiempo real */}
-                        <div className="mt-4 space-y-2">
-                          <p className="text-xs text-gray-400">Estado Actual:</p>
-                          <p className="text-sm text-gray-300">
-                            Índice de Rotación: <span className="font-bold text-white">{currentRotationIndex}</span>
-                          </p>
-                          <p className="text-sm text-gray-300">
-                            Clicks de Rotación: <span className="font-bold text-white">{rotationClickCount}</span>
-                          </p>
-                          {rotationMode === "time" && (
-                            <p className="text-sm text-gray-300">
-                              Tiempo Restante: <span className="font-bold text-white">{timeRemaining} min</span>
-                            </p>
+                        <div className="mt-4 rounded-lg border border-green-500/30 bg-gradient-to-br from-green-500/10 to-purple-500/10 p-4 space-y-3">
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="flex h-2 w-2">
+                              <span className="absolute inline-flex h-2 w-2 animate-ping rounded-full bg-green-400 opacity-75"></span>
+                              <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500"></span>
+                            </div>
+                            <p className="text-sm font-semibold text-green-300">Estado en Tiempo Real</p>
+                          </div>
+
+                          {rotationMode === "clicks" ? (
+                            <>
+                              <div className="flex items-center justify-between rounded-lg bg-black/40 p-3">
+                                <p className="text-sm text-gray-300">Clicks Actuales:</p>
+                                <span className="text-2xl font-bold text-white">{rotationClickCount}</span>
+                              </div>
+                              <div className="flex items-center justify-between rounded-lg bg-black/40 p-3">
+                                <p className="text-sm text-gray-300">Clicks para Rotar:</p>
+                                <span className="text-lg font-semibold text-purple-300">{rotationThreshold}</span>
+                              </div>
+                              <div className="mt-2">
+                                <div className="flex justify-between text-xs text-gray-400 mb-1">
+                                  <span>Progreso</span>
+                                  <span>
+                                    {Math.min(100, Math.round((rotationClickCount / rotationThreshold) * 100))}%
+                                  </span>
+                                </div>
+                                <div className="h-2 w-full overflow-hidden rounded-full bg-gray-700">
+                                  <div
+                                    className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-300"
+                                    style={{
+                                      width: `${Math.min(100, (rotationClickCount / rotationThreshold) * 100)}%`,
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="flex items-center justify-between rounded-lg bg-black/40 p-3">
+                                <p className="text-sm text-gray-300">Tiempo Restante:</p>
+                                <span className="text-2xl font-bold text-white">{timeRemaining} min</span>
+                              </div>
+                              <div className="flex items-center justify-between rounded-lg bg-black/40 p-3">
+                                <p className="text-sm text-gray-300">Tiempo Total:</p>
+                                <span className="text-lg font-semibold text-purple-300">{rotationThreshold} min</span>
+                              </div>
+                              <div className="mt-2">
+                                <div className="flex justify-between text-xs text-gray-400 mb-1">
+                                  <span>Progreso</span>
+                                  <span>{Math.max(0, Math.round((timeRemaining / rotationThreshold) * 100))}%</span>
+                                </div>
+                                <div className="h-2 w-full overflow-hidden rounded-full bg-gray-700">
+                                  <div
+                                    className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 transition-all duration-1000"
+                                    style={{ width: `${Math.max(0, (timeRemaining / rotationThreshold) * 100)}%` }}
+                                  />
+                                </div>
+                              </div>
+                            </>
                           )}
-                          {rotationLastUpdate && (
-                            <p className="text-sm text-gray-300">
-                              Última Actualización:{" "}
-                              <span className="font-bold text-white">{rotationLastUpdate.toLocaleString()}</span>
+
+                          <div className="mt-3 pt-3 border-t border-white/10">
+                            <p className="text-xs text-gray-400">Número Activo:</p>
+                            <p className="text-sm font-semibold text-white mt-1">
+                              {attentionNumbers[currentRotationIndex]?.label || "Sin configurar"}
+                              {attentionNumbers[currentRotationIndex]?.phone &&
+                                ` - ${attentionNumbers[currentRotationIndex]?.phone}`}
                             </p>
-                          )}
+                          </div>
                         </div>
                       </div>
                     )}
@@ -922,7 +971,7 @@ export default function AdminPage() {
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                               <div className="relative flex h-3 w-3">
-                                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
+                                <span className="absolute inline-flex h-3 w-3 animate-ping rounded-full bg-green-400 opacity-75"></span>
                                 <span className="relative inline-flex h-3 w-3 rounded-full bg-green-500"></span>
                               </div>
                               <div>
