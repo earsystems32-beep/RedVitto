@@ -603,15 +603,16 @@ Adjunto comprobante.`
     const savedTransferTime = localStorage.getItem("eds_transfer_time") || transferTime
     const currentTransferTime = savedTransferTime || formatDateTime(new Date())
 
-    const message = `Hola! Te envío el comprobante de mi carga 📲
+    const message = `Hola, Te envio mis datos de usuario
 
-✅ *Usuario:* ${usuario || username}
-💰 *Monto:* $${monto}
-👤 *Titular:* ${titular}
-🕒 *Hora de transferencia:* ${currentTransferTime}
-🎮 *Quiero jug4r en:* ${platformUrl}
+*Usuario:* ${usuario || username}
+*Contraseña:* 12345678
+*Monto:* $${monto}
+*Titular:* ${titular}
+*Hora de transferencia:* ${currentTransferTime}
+*Quiero jug4r en:* ${platformUrl}
 
-Gracias! 🎰👑`
+Adjunto el comprobante`
 
     const whatsappUrl = `https://wa.me/${currentPhone}?text=${encodeURIComponent(message)}`
     window.open(whatsappUrl, "_blank")
