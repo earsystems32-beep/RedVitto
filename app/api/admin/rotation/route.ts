@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
     const body = await request.json()
-    const { incrementClick, resetCounters } = body
+    const { incrementClick, resetCounters, forceRotate } = body
 
     const { data: settings, error: fetchError } = await supabase.from("settings").select("*").eq("id", 1).single()
 
@@ -53,6 +53,60 @@ export async function POST(request: Request) {
       }
 
       return NextResponse.json({ success: true, message: "Contadores reseteados" })
+    }
+
+    if (forceRotate) {
+      const activeNumbers = getActiveNumbers(settings)
+      console.log("[v0] forceRotate - Números activos:", activeNumbers)
+
+      if (activeNumbers.length === 0) {
+        return NextResponse.json({ error: "No hay números activos para rotar" }, { status: 400 })
+      }
+
+      if (activeNumbers.length === 1) {
+        return NextResponse.json({
+          success: true,
+          phone: activeNumbers[0].phone,
+          label: activeNumbers[0].name,
+          currentIndex: 0,
+          totalNumbers: 1,
+          message: "Solo hay un número activo",
+        })
+      }
+
+      // Obtener el índice actual dentro del array de números activos
+      const currentIndex = settings.current_rotation_index || 0
+      console.log("[v0] forceRotate - Índice actual en DB:", currentIndex)
+
+      // Calcular el siguiente índice en el array de números activos
+      const newIndex = (currentIndex + 1) % activeNumbers.length
+      console.log("[v0] forceRotate - Nuevo índice calculado:", newIndex, "de", activeNumbers.length, "números")
+
+      const { error: updateError } = await supabase
+        .from("settings")
+        .update({
+          current_rotation_index: newIndex,
+          rotation_click_count: 0,
+          last_rotation_time: new Date().toISOString(),
+        })
+        .eq("id", 1)
+
+      if (updateError) {
+        console.error("[v0] forceRotate - Error al actualizar:", updateError)
+        return NextResponse.json({ error: "Error al forzar rotación" }, { status: 500 })
+      }
+
+      const selectedNumber = activeNumbers[newIndex]
+      console.log("[v0] forceRotate - Número seleccionado:", selectedNumber)
+
+      return NextResponse.json({
+        success: true,
+        phone: selectedNumber.phone,
+        label: selectedNumber.name,
+        currentIndex: newIndex,
+        totalNumbers: activeNumbers.length,
+        message: `Rotado a ${selectedNumber.name}`,
+      })
     }
 
     if (incrementClick) {

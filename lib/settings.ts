@@ -41,137 +41,122 @@ function getSupabaseClient() {
 }
 
 export async function getSettings(): Promise<Settings> {
-  try {
-    const supabase = getSupabaseClient()
+  const supabase = getSupabaseClient()
+  const { data, error } = await supabase.from("settings").select("*").eq("id", 1).single()
 
-    const { data, error } = await supabase.from("settings").select("*").eq("id", 1).single()
+  if (error) {
+    throw new Error(`Failed to fetch settings: ${error.message}`)
+  }
 
-    if (error) {
-      console.error("[Settings] Error fetching from Supabase:", error)
-      throw new Error(`Failed to fetch settings: ${error.message}`)
-    }
+  if (!data) {
+    throw new Error("Settings not found")
+  }
 
-    if (!data) {
-      throw new Error("Settings not found")
-    }
+  const attentionNumbers: AttentionNumber[] = []
+  for (let i = 1; i <= 9; i++) {
+    attentionNumbers.push({
+      phone: data[`attention_phone_${i}`] || "",
+      name: data[`attention_name_${i}`] || "",
+      active: data[`attention_active_${i}`] ?? false,
+    })
+  }
 
-    const attentionNumbers: AttentionNumber[] = []
-    for (let i = 1; i <= 9; i++) {
-      const phone = data[`attention_phone_${i}`] || ""
-      const name = data[`attention_name_${i}`] || ""
-      const active = data[`attention_active_${i}`] ?? false
-
-      attentionNumbers.push({ phone, name, active })
-    }
-
-    return {
-      minAmount: data.min_amount,
-      timerSeconds: data.timer_seconds,
-      createUserEnabled: data.create_user_enabled,
-      alias: data.alias || "",
-      phone: data.phone || "",
-      supportPhone: data.support_phone || "",
-      paymentType: data.payment_type,
-      platformUrl: data.platform_url || "https://ganamos.sbs",
-      bonusEnabled: data.bonus_enabled ?? true,
-      bonusPercentage: data.bonus_percentage ?? 25,
-      rotationEnabled: data.rotation_enabled ?? false,
-      rotationMode: data.rotation_mode || "clicks",
-      rotationThreshold: data.rotation_threshold || 10,
-      attentionNumbers,
-      currentRotationIndex: data.current_rotation_index || 0,
-      rotationClickCount: data.rotation_click_count || 0,
-      lastRotationTime: data.last_rotation_time || new Date().toISOString(),
-    }
-  } catch (error) {
-    console.error("[Settings] getSettings error:", error)
-    throw error
+  return {
+    minAmount: data.min_amount,
+    timerSeconds: data.timer_seconds,
+    createUserEnabled: data.create_user_enabled,
+    alias: data.alias || "",
+    phone: data.phone || "",
+    supportPhone: data.support_phone || "",
+    paymentType: data.payment_type,
+    platformUrl: data.platform_url || "https://ganamos.sbs",
+    bonusEnabled: data.bonus_enabled ?? true,
+    bonusPercentage: data.bonus_percentage ?? 25,
+    rotationEnabled: data.rotation_enabled ?? false,
+    rotationMode: data.rotation_mode || "clicks",
+    rotationThreshold: data.rotation_threshold || 10,
+    attentionNumbers,
+    currentRotationIndex: data.current_rotation_index || 0,
+    rotationClickCount: data.rotation_click_count || 0,
+    lastRotationTime: data.last_rotation_time || new Date().toISOString(),
   }
 }
 
 export async function updateSettings(updates: Record<string, unknown>): Promise<Settings> {
-  try {
-    const supabase = getSupabaseClient()
+  const supabase = getSupabaseClient()
+  const dbUpdates: Record<string, unknown> = {}
 
-    const dbUpdates: Record<string, unknown> = {}
+  // Mapeo de campos
+  const fieldMap: Record<string, string> = {
+    minAmount: "min_amount",
+    timerSeconds: "timer_seconds",
+    createUserEnabled: "create_user_enabled",
+    alias: "alias",
+    phone: "phone",
+    supportPhone: "support_phone",
+    paymentType: "payment_type",
+    platformUrl: "platform_url",
+    bonusEnabled: "bonus_enabled",
+    bonusPercentage: "bonus_percentage",
+    rotationEnabled: "rotation_enabled",
+    rotationMode: "rotation_mode",
+    rotationThreshold: "rotation_threshold",
+    currentRotationIndex: "current_rotation_index",
+    rotationClickCount: "rotation_click_count",
+    lastRotationTime: "last_rotation_time",
+  }
 
-    if (updates.minAmount !== undefined) dbUpdates.min_amount = updates.minAmount
-    if (updates.timerSeconds !== undefined) dbUpdates.timer_seconds = updates.timerSeconds
-    if (updates.createUserEnabled !== undefined) dbUpdates.create_user_enabled = updates.createUserEnabled
-    if (updates.alias !== undefined) dbUpdates.alias = updates.alias
-    if (updates.phone !== undefined) dbUpdates.phone = updates.phone
-    if (updates.supportPhone !== undefined) dbUpdates.support_phone = updates.supportPhone
-    if (updates.paymentType !== undefined) dbUpdates.payment_type = updates.paymentType
-    if (updates.platformUrl !== undefined) dbUpdates.platform_url = updates.platformUrl
-    if (updates.bonusEnabled !== undefined) dbUpdates.bonus_enabled = updates.bonusEnabled
-    if (updates.bonusPercentage !== undefined) dbUpdates.bonus_percentage = updates.bonusPercentage
-    if (updates.rotationEnabled !== undefined) dbUpdates.rotation_enabled = updates.rotationEnabled
-    if (updates.rotationMode !== undefined) dbUpdates.rotation_mode = updates.rotationMode
-    if (updates.rotationThreshold !== undefined) dbUpdates.rotation_threshold = updates.rotationThreshold
+  // Aplicar mapeo
+  for (const [key, dbKey] of Object.entries(fieldMap)) {
+    if (updates[key] !== undefined) {
+      dbUpdates[dbKey] = updates[key]
+    }
+  }
 
-    if (updates.currentRotationIndex !== undefined) dbUpdates.current_rotation_index = updates.currentRotationIndex
-    if (updates.rotationClickCount !== undefined) dbUpdates.rotation_click_count = updates.rotationClickCount
-    if (updates.lastRotationTime !== undefined) dbUpdates.last_rotation_time = updates.lastRotationTime
-
-    for (let i = 1; i <= 9; i++) {
-      const phoneKey = `attention_phone_${i}`
-      const nameKey = `attention_name_${i}`
-      const activeKey = `attention_active_${i}`
-
-      if (updates[phoneKey] !== undefined) {
-        dbUpdates[phoneKey] = updates[phoneKey]
+  // Campos de atención directos
+  for (let i = 1; i <= 9; i++) {
+    for (const suffix of ["phone", "name", "active"]) {
+      const key = `attention_${suffix}_${i}`
+      if (updates[key] !== undefined) {
+        dbUpdates[key] = updates[key]
       }
-      if (updates[nameKey] !== undefined) {
-        dbUpdates[nameKey] = updates[nameKey]
-      }
-      if (updates[activeKey] !== undefined) {
-        dbUpdates[activeKey] = updates[activeKey]
-      }
     }
+  }
 
-    dbUpdates.updated_at = new Date().toISOString()
+  dbUpdates.updated_at = new Date().toISOString()
 
-    console.log("[v0] updateSettings - dbUpdates:", JSON.stringify(dbUpdates, null, 2))
+  const { data, error } = await supabase.from("settings").update(dbUpdates).eq("id", 1).select().single()
 
-    const { data, error } = await supabase.from("settings").update(dbUpdates).eq("id", 1).select().single()
+  if (error) {
+    throw new Error(`Failed to update settings: ${error.message}`)
+  }
 
-    if (error) {
-      console.error("[Settings] Error updating Supabase:", error)
-      throw new Error(`Failed to update settings: ${error.message}`)
-    }
+  const attentionNumbers: AttentionNumber[] = []
+  for (let i = 1; i <= 9; i++) {
+    attentionNumbers.push({
+      phone: data[`attention_phone_${i}`] || "",
+      name: data[`attention_name_${i}`] || "",
+      active: data[`attention_active_${i}`] ?? false,
+    })
+  }
 
-    console.log("[v0] updateSettings - data returned:", JSON.stringify(data, null, 2))
-
-    const attentionNumbers: AttentionNumber[] = []
-    for (let i = 1; i <= 9; i++) {
-      const phone = data[`attention_phone_${i}`] || ""
-      const name = data[`attention_name_${i}`] || ""
-      const active = data[`attention_active_${i}`] ?? false
-
-      attentionNumbers.push({ phone, name, active })
-    }
-
-    return {
-      minAmount: data.min_amount,
-      timerSeconds: data.timer_seconds,
-      createUserEnabled: data.create_user_enabled,
-      alias: data.alias || "",
-      phone: data.phone || "",
-      supportPhone: data.support_phone || "",
-      paymentType: data.payment_type,
-      platformUrl: data.platform_url || "https://ganamos.sbs",
-      bonusEnabled: data.bonus_enabled ?? true,
-      bonusPercentage: data.bonus_percentage ?? 25,
-      rotationEnabled: data.rotation_enabled ?? false,
-      rotationMode: data.rotation_mode || "clicks",
-      rotationThreshold: data.rotation_threshold || 10,
-      attentionNumbers,
-      currentRotationIndex: data.current_rotation_index || 0,
-      rotationClickCount: data.rotation_click_count || 0,
-      lastRotationTime: data.last_rotation_time || new Date().toISOString(),
-    }
-  } catch (error) {
-    console.error("[Settings] updateSettings error:", error)
-    throw error
+  return {
+    minAmount: data.min_amount,
+    timerSeconds: data.timer_seconds,
+    createUserEnabled: data.create_user_enabled,
+    alias: data.alias || "",
+    phone: data.phone || "",
+    supportPhone: data.support_phone || "",
+    paymentType: data.payment_type,
+    platformUrl: data.platform_url || "https://ganamos.sbs",
+    bonusEnabled: data.bonus_enabled ?? true,
+    bonusPercentage: data.bonus_percentage ?? 25,
+    rotationEnabled: data.rotation_enabled ?? false,
+    rotationMode: data.rotation_mode || "clicks",
+    rotationThreshold: data.rotation_threshold || 10,
+    attentionNumbers,
+    currentRotationIndex: data.current_rotation_index || 0,
+    rotationClickCount: data.rotation_click_count || 0,
+    lastRotationTime: data.last_rotation_time || new Date().toISOString(),
   }
 }

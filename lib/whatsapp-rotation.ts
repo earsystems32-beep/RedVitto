@@ -77,6 +77,7 @@ function getAttentionNumbersFromSettings(settings: SupabaseSettings): AttentionN
  * @returns El número de teléfono a usar
  */
 export async function getNextAttentionNumber(settings: SupabaseSettings): Promise<string> {
+  // Si la rotación está desactivada, usar número fijo
   if (!settings.rotation_enabled) {
     return settings.phone || ""
   }
@@ -84,16 +85,19 @@ export async function getNextAttentionNumber(settings: SupabaseSettings): Promis
   const allNumbers = getAttentionNumbersFromSettings(settings)
   const activeNumbers = allNumbers.filter((n) => n.active)
 
+  // Sin números activos, usar fijo
   if (activeNumbers.length === 0) {
     return settings.phone || ""
   }
 
+  // Solo un número activo
   if (activeNumbers.length === 1) {
     return activeNumbers[0].phone
   }
 
-  let currentIndex = settings.current_rotation_index || 0
+  const currentIndex = settings.current_rotation_index || 0
 
+  // Modo clicks: llamar al API para incrementar y obtener siguiente
   if (settings.rotation_mode === "clicks") {
     try {
       const response = await fetch("/api/admin/rotation", {
@@ -102,27 +106,24 @@ export async function getNextAttentionNumber(settings: SupabaseSettings): Promis
         body: JSON.stringify({ incrementClick: true }),
       })
 
-      const data = await response.json()
-
-      if (data.success && data.phone) {
-        return data.phone
+      if (!response.ok) {
+        return activeNumbers[currentIndex % activeNumbers.length].phone
       }
-    } catch (error) {
-      console.error("Error incrementing click:", error)
+
+      const data = await response.json()
+      return data.success && data.phone ? data.phone : activeNumbers[currentIndex % activeNumbers.length].phone
+    } catch {
+      return activeNumbers[currentIndex % activeNumbers.length].phone
     }
-
-    return activeNumbers[currentIndex].phone
-  } else {
-    const lastRotation = new Date(settings.last_rotation_time).getTime()
-    const now = Date.now()
-    const elapsedMinutes = (now - lastRotation) / 1000 / 60
-
-    if (elapsedMinutes >= settings.rotation_threshold) {
-      currentIndex = (currentIndex + 1) % activeNumbers.length
-    }
-
-    return activeNumbers[currentIndex].phone
   }
+
+  // Modo tiempo: verificar si pasó el threshold
+  const lastRotation = new Date(settings.last_rotation_time).getTime()
+  const elapsedMinutes = (Date.now() - lastRotation) / 1000 / 60
+  const effectiveIndex =
+    elapsedMinutes >= settings.rotation_threshold ? (currentIndex + 1) % activeNumbers.length : currentIndex
+
+  return activeNumbers[effectiveIndex].phone
 }
 
 /**
@@ -135,11 +136,9 @@ export async function resetRotationCounters(): Promise<boolean> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ resetCounters: true }),
     })
-
     const data = await response.json()
     return data.success
-  } catch (error) {
-    console.error("[WhatsApp Rotation] Error resetting counters:", error)
+  } catch {
     return false
   }
 }
