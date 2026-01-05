@@ -432,7 +432,9 @@ Adjunto comprobante.`
     if (!attentionPhoneNumber) return
 
     try {
-      await navigator.clipboard.writeText(attentionPhoneNumber)
+      const phoneWithPlus = attentionPhoneNumber.startsWith("+") ? attentionPhoneNumber : `+${attentionPhoneNumber}`
+
+      await navigator.clipboard.writeText(phoneWithPlus)
       setCopiedPhone(true)
       setShowContactWarningModal(true)
       setCanProceedAfterCopy(false)
@@ -807,18 +809,20 @@ Adjunto comprobante.`
             <button
               onClick={handleCopyNumber}
               disabled={copiedPhone}
-              className={`w-full py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
-                copiedPhone ? "bg-green-600 text-white" : "bg-gray-700 text-white hover:bg-gray-600"
+              className={`w-full py-5 rounded-xl font-semibold text-xl transition-all flex items-center justify-center gap-3 ${
+                copiedPhone
+                  ? "bg-green-600 text-white"
+                  : "bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:opacity-90"
               }`}
             >
               {copiedPhone ? (
                 <>
-                  <Check className="w-5 h-5" />
+                  <Check className="w-6 h-6" />
                   Número copiado
                 </>
               ) : (
                 <>
-                  <Copy className="w-5 h-5" />
+                  <Copy className="w-6 h-6" />
                   Copiar número
                 </>
               )}
