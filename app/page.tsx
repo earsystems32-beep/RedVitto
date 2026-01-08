@@ -447,49 +447,68 @@ Adjunto comprobante.`
   }, [attentionPhoneNumber])
 
   // Enviar a WhatsApp
-  const handleWhatsAppSend = useCallback(async () => {
-    if (!settings) {
-      alert("Error: No se pudo cargar la configuración. Por favor recarga la página.")
-      return
-    }
+  const handleWhatsAppSend = async () => {
+    console.log("[v0] ========== handleWhatsAppSend CLICK ==========")
 
-    // Construir objeto de configuración para rotación
-    const settingsForRotation = {
-      rotation_enabled: settings.rotationEnabled,
-      rotation_mode: settings.rotationMode,
-      rotation_threshold: settings.rotationThreshold,
-      current_rotation_index: settings.currentRotationIndex,
-      rotation_click_count: settings.rotationClickCount,
-      last_rotation_time: settings.lastRotationTime,
-      phone: settings.phone,
-      ...Object.fromEntries(
-        (settings.attentionNumbers || []).flatMap((num, i) => [
-          [`attention_phone_${i + 1}`, num?.phone || ""],
-          [`attention_name_${i + 1}`, num?.label || ""],
-          [`attention_active_${i + 1}`, num?.active || false],
-        ]),
-      ),
-    }
+    try {
+      console.log("[v0] Dentro del try")
 
-    console.log("[v0] handleWhatsAppSend - settingsForRotation:", settingsForRotation)
+      if (!settings) {
+        console.log("[v0] ERROR: settings es null")
+        alert("Error: No se pudo cargar la configuración. Por favor recarga la página.")
+        return
+      }
 
-    const currentPhone = await getNextAttentionNumber(settingsForRotation as any)
+      console.log("[v0] rotationEnabled:", settings.rotationEnabled)
+      console.log("[v0] attentionNumbers count:", settings.attentionNumbers?.length)
 
-    console.log("[v0] handleWhatsAppSend - currentPhone obtenido:", currentPhone)
+      let currentPhone = settings.phone || ""
 
-    if (!currentPhone) {
-      console.log("[v0] handleWhatsAppSend - No hay número disponible!")
-      alert("Error: No hay número de atención disponible.")
-      return
-    }
+      if (settings.rotationEnabled && settings.attentionNumbers) {
+        console.log("[v0] Rotación ACTIVADA - llamando al API")
 
-    setAttentionPhoneNumber(currentPhone)
+        // Construir objeto para rotación
+        const settingsForRotation = {
+          rotation_enabled: settings.rotationEnabled,
+          rotation_mode: settings.rotationMode,
+          rotation_threshold: settings.rotationThreshold,
+          current_rotation_index: settings.currentRotationIndex,
+          rotation_click_count: settings.rotationClickCount,
+          phone: settings.phone,
+        }
 
-    const timeToUse = transferTime || localStorage.getItem("eds_transfer_time") || formatDateTime(new Date())
-    const plataformaGuardada = localStorage.getItem("eds_platform") || plataforma
-    const plataformaURL = plataformaGuardada === "z" ? "https://casinozeus.fit" : platformUrl
+        // Agregar números de atención
+        settings.attentionNumbers.forEach((num, i) => {
+          ;(settingsForRotation as any)[`attention_phone_${i + 1}`] = num?.phone || ""
+          ;(settingsForRotation as any)[`attention_name_${i + 1}`] = num?.label || ""
+          ;(settingsForRotation as any)[`attention_active_${i + 1}`] = num?.active || false
+        })
 
-    const message = `Hola, ya envié mi c4rg4.
+        console.log("[v0] Llamando getNextAttentionNumber con:", JSON.stringify(settingsForRotation).substring(0, 200))
+
+        const rotatedPhone = await getNextAttentionNumber(settingsForRotation as any)
+        console.log("[v0] getNextAttentionNumber retornó:", rotatedPhone)
+
+        if (rotatedPhone) {
+          currentPhone = rotatedPhone
+        }
+      } else {
+        console.log("[v0] Rotación DESACTIVADA - usando número fijo:", currentPhone)
+      }
+
+      if (!currentPhone) {
+        console.log("[v0] ERROR: No hay número de teléfono")
+        alert("Error: No hay número de atención disponible.")
+        return
+      }
+
+      setAttentionPhoneNumber(currentPhone)
+
+      const timeToUse = transferTime || localStorage.getItem("eds_transfer_time") || formatDateTime(new Date())
+      const plataformaGuardada = localStorage.getItem("eds_platform") || plataforma
+      const plataformaURL = plataformaGuardada === "z" ? "https://casinozeus.fit" : platformUrl
+
+      const message = `Hola, ya envié mi c4rg4.
 
 Usu4rio: ${usuario}
 Contr4seña: ${DEFAULT_PASSWORD}
@@ -501,23 +520,16 @@ Hora de transferencia: ${timeToUse}
 
 Adjunto comprobante.`
 
-    const whatsappUrl = `https://wa.me/${currentPhone}?text=${encodeURIComponent(message)}`
-    console.log("[v0] handleWhatsAppSend - Abriendo WhatsApp URL:", whatsappUrl)
+      const whatsappUrl = `https://wa.me/${currentPhone}?text=${encodeURIComponent(message)}`
+      console.log("[v0] Abriendo WhatsApp:", whatsappUrl.substring(0, 100))
 
-    window.open(whatsappUrl, "_blank")
-    changeStep(8, "forward")
-  }, [
-    settings,
-    transferTime,
-    plataforma,
-    usuario,
-    titular,
-    monto,
-    formatCurrency,
-    platformUrl,
-    formatDateTime,
-    changeStep,
-  ])
+      window.open(whatsappUrl, "_blank")
+      changeStep(8, "forward")
+    } catch (error) {
+      console.log("[v0] ERROR CAPTURADO:", error)
+      alert("Error al procesar la solicitud. Por favor intenta de nuevo.")
+    }
+  }
 
   const isSoporteButtonEnabled = titular.trim().length > 0 && monto.trim().length > 0
 
@@ -798,7 +810,7 @@ Adjunto comprobante.`
 
             <div className="text-center space-y-1">
               <h2 className="text-xl font-bold text-white">Guarda nuestro contacto</h2>
-              <p className="text-gray-400 text-sm">Guardanos como "La Corona"</p>
+              <p className="text-gray-400 text-sm">Guardanos como "La Corona" en tus contactos.</p>
             </div>
 
             {/* Número de contacto */}
