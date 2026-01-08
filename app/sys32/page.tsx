@@ -186,6 +186,7 @@ export default function AdminPage() {
         if (data.success && data.settings) {
           setCurrentRotationIndex(data.settings.currentRotationIndex || 0)
           setRotationClickCount(data.settings.rotationClickCount || 0)
+          setTotalRequestsCount(data.settings.totalRequestsCount || 0)
           if (data.settings.rotation_last_update) {
             setRotationLastUpdate(new Date(data.settings.rotation_last_update))
           }
@@ -267,12 +268,12 @@ export default function AdminPage() {
 
   // Polling for rotation status
   useEffect(() => {
-    if (rotationEnabled) {
+    if (isAuthenticated) {
       loadRotationStatus()
       const interval = setInterval(loadRotationStatus, POLLING_INTERVAL)
       return () => clearInterval(interval)
     }
-  }, [rotationEnabled, loadRotationStatus])
+  }, [isAuthenticated, loadRotationStatus])
 
   // Timer countdown for time-based rotation
   useEffect(() => {
@@ -638,10 +639,10 @@ export default function AdminPage() {
               </div>
             </div>
           ) : (
-            <div className="min-h-screen bg-black py-6 px-2 animate-fadeIn">
-              <div className="max-w-5xl mx-auto space-y-4">
+            <div className="min-h-screen bg-black py-3 px-2 animate-fadeIn">
+              <div className="max-w-5xl mx-auto space-y-2">
                 {/* Header */}
-                <div className="text-center space-y-3 mb-6">
+                <div className="text-center space-y-3 mb-3">
                   <div className="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg">
                     <Crown className="w-8 h-8 text-white" />
                   </div>
@@ -651,7 +652,7 @@ export default function AdminPage() {
                   <p className="text-gray-400 text-sm">Configuración del sistema</p>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-2">
                   {/* Configuración general */}
                   <div className="bg-black/40 backdrop-blur-md border border-purple-600/20 rounded-xl p-4 space-y-3 animate-fadeIn shadow-xl">
                     <div className="flex items-center gap-2 mb-1">

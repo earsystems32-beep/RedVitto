@@ -3,11 +3,9 @@ import type React from "react"
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import Link from "next/link"
 import {
   Check,
   Copy,
-  Crown,
   MessageCircle,
   ArrowLeft,
   AlertCircle,
@@ -18,6 +16,7 @@ import {
   Phone,
   Loader2,
   Calendar,
+  HelpCircle,
 } from "lucide-react"
 import { generateVCF } from "@/lib/vcf-generator"
 import { getNextAttentionNumber, getCurrentAttentionNumber } from "@/lib/whatsapp-rotation"
@@ -41,7 +40,8 @@ interface Settings {
   rotationClickCount?: number
   lastRotationTime?: string
   attentionNumbers?: Array<{ phone?: string; label?: string; active?: boolean }>
-  support_phone?: string
+  support_phone?: string // Changed to supportPhone in updates
+  supportPhone?: string // Added to match updates
 }
 
 const DEFAULT_PASSWORD = "12345678"
@@ -74,7 +74,7 @@ export default function TheCrown() {
   const [showInfoModal, setShowInfoModal] = useState(false)
   const [isModalAnimating, setIsModalAnimating] = useState(false)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-  const [showHowItWorks, setShowHowItWorks] = useState(false)
+  const [showHowItWorks, setShowHowItWorks] = useState(false) // Renamed from showHelp to showHowItWorks
 
   // Timer y bono
   const [transferButtonTimer, setTransferButtonTimer] = useState(30)
@@ -538,44 +538,46 @@ Adjunto comprobante.`
       case 1:
         return (
           <div
-            className={`space-y-6 transition-all duration-500 ${isStepAnimating ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+            className={`space-y-4 transition-all duration-500 ${isStepAnimating ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
           >
-            <div className="text-center space-y-4">
-              <div className="w-28 h-28 mx-auto rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg">
-                <Crown className="w-14 h-14 text-white" />
-              </div>
-              <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                La Corona
-              </h1>
+            <div className="text-center space-y-2">
+              <h1 className="text-3xl font-bold text-white">La Corona</h1>
+              <p className="text-gray-400 text-sm">Sistema de gestión</p>
             </div>
 
-            <div className="space-y-4 pt-6">
+            <div className="space-y-3">
               <button
-                onClick={() => (userCreationEnabled ? changeStep(2, "forward") : changeStep(4, "forward"))}
-                className="w-full py-6 rounded-2xl font-bold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 transition-all flex items-center justify-center gap-3 text-2xl"
+                onClick={() => changeStep(2)}
+                className="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 transition-all flex items-center justify-center gap-2"
               >
                 Crear Usuario
-                <ChevronRight className="w-7 h-7" />
+                <ChevronRight className="w-5 h-5" />
               </button>
-              <Link
-                href="/retiros"
-                className="w-full py-6 rounded-2xl font-bold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 transition-all flex items-center justify-center gap-3 text-2xl"
+
+              <button
+                onClick={() => changeStep(10)}
+                className="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 transition-all flex items-center justify-center gap-2"
               >
-                <Calendar className="w-6 h-6" />
+                <Calendar className="w-5 h-5" />
                 Cronograma
-              </Link>
+              </button>
+
+              <button
+                onClick={() => changeStep(9)}
+                className="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 transition-all flex items-center justify-center gap-2"
+              >
+                <MessageCircle className="w-5 h-5" />
+                Soporte
+              </button>
             </div>
 
-            {/* Info */}
-            <div className="flex items-center justify-center pt-4">
-              <button
-                onClick={() => setShowHowItWorks(true)}
-                className="text-base text-gray-400 hover:text-white transition-colors flex items-center gap-1"
-              >
-                <AlertCircle className="w-5 h-5" />
-                ¿Cómo funciona?
-              </button>
-            </div>
+            <button
+              onClick={() => setShowHowItWorks(true)}
+              className="flex items-center justify-center gap-2 text-gray-400 hover:text-white transition-colors mx-auto text-sm"
+            >
+              <HelpCircle className="w-4 h-4" />
+              ¿Cómo funciona?
+            </button>
           </div>
         )
 
@@ -964,6 +966,68 @@ Adjunto comprobante.`
       case 9:
         return (
           <div
+            className={`space-y-6 transition-all duration-500 ${isStepAnimating ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+          >
+            <button
+              onClick={() => changeStep(1, "back")}
+              className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors text-sm"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Volver
+            </button>
+
+            <div className="text-center space-y-3">
+              <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                <MessageCircle className="w-10 h-10 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold text-white">Centro de Soporte</h2>
+              <p className="text-gray-400">
+                ¿Tuviste algún inconveniente o necesitas ayuda? Estamos aquí para asistirte
+              </p>
+            </div>
+
+            <div className="bg-gradient-to-br from-purple-900/40 to-pink-900/40 rounded-2xl p-6 border border-purple-700/50 space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0">
+                  <AlertCircle className="w-5 h-5 text-purple-400" />
+                </div>
+                <div className="space-y-2">
+                  <p className="text-white font-semibold">Atención personalizada</p>
+                  <ul className="text-gray-300 text-sm space-y-1.5">
+                    <li>• Resolvemos tus dudas al instante</li>
+                    <li>• Asistencia con cargas y préstamos</li>
+                    <li>• Verificación de estado de solicitudes</li>
+                    <li>• Soporte técnico disponible</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-purple-700/30">
+                <p className="text-gray-400 text-sm mb-2">Número de contacto:</p>
+                <p className="text-white font-mono text-lg">+{settings?.supportPhone || "549341619804"}</p>
+              </div>
+            </div>
+
+            <a
+              href={`https://wa.me/${settings?.supportPhone || "549341619804"}?text=${encodeURIComponent(
+                "Hola, necesito ayuda con La Corona. ¿Podrían asistirme?",
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-4 rounded-xl font-semibold text-white bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 transition-all flex items-center justify-center gap-2 shadow-lg"
+            >
+              <MessageCircle className="w-5 h-5" />
+              Contactar por WhatsApp
+            </a>
+
+            <p className="text-center text-gray-500 text-xs">Horario de atención: Lunes a Viernes, 9:00 - 18:00 hs</p>
+          </div>
+        )
+
+      // Placeholder for the new step 10
+      case 10:
+        return (
+          <div
             className={`space-y-4 transition-all duration-500 ${isStepAnimating ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
           >
             <button
@@ -971,31 +1035,18 @@ Adjunto comprobante.`
               className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors text-sm"
             >
               <ArrowLeft className="w-4 h-4" />
-              Volver al inicio
+              Volver
             </button>
 
             <div className="text-center space-y-2">
-              <div className="w-16 h-16 mx-auto rounded-full bg-purple-500/20 flex items-center justify-center">
-                <MessageCircle className="w-8 h-8 text-purple-400" />
-              </div>
-              <h2 className="text-xl font-bold text-white">Soporte</h2>
-              <p className="text-gray-400 text-sm">Contactanos para ayuda</p>
+              <h2 className="text-3xl font-bold text-white">Cronograma</h2>
+              <p className="text-gray-400 text-lg">Próximas fechas importantes</p>
             </div>
 
-            <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-800">
-              <p className="text-gray-400 text-sm mb-2">Número de soporte</p>
-              <p className="text-white font-mono text-lg">+{settings?.support_phone || "543416605903"}</p>
+            <div className="bg-gray-900/50 rounded-2xl p-5 border border-gray-800 space-y-4">
+              <p className="text-gray-400 text-sm">En construcción...</p>
+              {/* Add cronograma content here */}
             </div>
-
-            <a
-              href={`https://wa.me/${settings?.support_phone || "543416605903"}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 transition-all flex items-center justify-center gap-2"
-            >
-              <MessageCircle className="w-5 h-5" />
-              Abrir WhatsApp
-            </a>
           </div>
         )
 
