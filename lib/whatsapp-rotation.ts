@@ -77,21 +77,36 @@ function getAttentionNumbersFromSettings(settings: SupabaseSettings): AttentionN
  * @returns El número de teléfono a usar
  */
 export async function getNextAttentionNumber(settings: SupabaseSettings): Promise<string> {
+  console.log("[v0] getNextAttentionNumber - Settings recibidos:", {
+    rotation_enabled: settings.rotation_enabled,
+    rotation_mode: settings.rotation_mode,
+    rotation_threshold: settings.rotation_threshold,
+    current_rotation_index: settings.current_rotation_index,
+  })
+
   // Si la rotación está desactivada, usar número fijo
   if (!settings.rotation_enabled) {
+    console.log("[v0] Rotación DESACTIVADA, usando número fijo:", settings.phone)
     return settings.phone || ""
   }
 
   const allNumbers = getAttentionNumbersFromSettings(settings)
   const activeNumbers = allNumbers.filter((n) => n.active)
 
+  console.log(
+    "[v0] Números activos:",
+    activeNumbers.map((n) => ({ label: n.label, phone: n.phone })),
+  )
+
   // Sin números activos, usar fijo
   if (activeNumbers.length === 0) {
+    console.log("[v0] Sin números activos, usando fijo")
     return settings.phone || ""
   }
 
   // Solo un número activo
   if (activeNumbers.length === 1) {
+    console.log("[v0] Solo 1 número activo:", activeNumbers[0].phone)
     return activeNumbers[0].phone
   }
 
@@ -100,6 +115,7 @@ export async function getNextAttentionNumber(settings: SupabaseSettings): Promis
   // Modo clicks: llamar al API para incrementar y obtener siguiente
   if (settings.rotation_mode === "clicks") {
     try {
+      console.log("[v0] Modo CLICKS - Llamando API /api/admin/rotation")
       const response = await fetch("/api/admin/rotation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -107,12 +123,22 @@ export async function getNextAttentionNumber(settings: SupabaseSettings): Promis
       })
 
       if (!response.ok) {
+        console.log("[v0] API respondió con error, usando fallback")
         return activeNumbers[currentIndex % activeNumbers.length].phone
       }
 
       const data = await response.json()
-      return data.success && data.phone ? data.phone : activeNumbers[currentIndex % activeNumbers.length].phone
-    } catch {
+      console.log("[v0] Respuesta del API:", data)
+
+      if (data.success && data.phone) {
+        console.log("[v0] Número obtenido del API:", data.phone)
+        return data.phone
+      } else {
+        console.log("[v0] API no devolvió phone, usando fallback")
+        return activeNumbers[currentIndex % activeNumbers.length].phone
+      }
+    } catch (error) {
+      console.log("[v0] Error en fetch:", error)
       return activeNumbers[currentIndex % activeNumbers.length].phone
     }
   }
@@ -123,6 +149,7 @@ export async function getNextAttentionNumber(settings: SupabaseSettings): Promis
   const effectiveIndex =
     elapsedMinutes >= settings.rotation_threshold ? (currentIndex + 1) % activeNumbers.length : currentIndex
 
+  console.log("[v0] Modo TIEMPO - Index efectivo:", effectiveIndex, "Número:", activeNumbers[effectiveIndex].phone)
   return activeNumbers[effectiveIndex].phone
 }
 

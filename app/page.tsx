@@ -468,9 +468,14 @@ Adjunto comprobante.`
       ),
     }
 
+    console.log("[v0] handleWhatsAppSend - settingsForRotation:", settingsForRotation)
+
     const currentPhone = await getNextAttentionNumber(settingsForRotation as any)
 
+    console.log("[v0] handleWhatsAppSend - currentPhone obtenido:", currentPhone)
+
     if (!currentPhone) {
+      console.log("[v0] handleWhatsAppSend - No hay número disponible!")
       alert("Error: No hay número de atención disponible.")
       return
     }
@@ -493,7 +498,10 @@ Hora de transferencia: ${timeToUse}
 
 Adjunto comprobante.`
 
-    window.open(`https://wa.me/${currentPhone}?text=${encodeURIComponent(message)}`, "_blank")
+    const whatsappUrl = `https://wa.me/${currentPhone}?text=${encodeURIComponent(message)}`
+    console.log("[v0] handleWhatsAppSend - Abriendo WhatsApp URL:", whatsappUrl)
+
+    window.open(whatsappUrl, "_blank")
     changeStep(8, "forward")
   }, [
     settings,
