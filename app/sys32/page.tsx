@@ -6,8 +6,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
-import { LinkIcon, Settings, Plus } from "lucide-react"
 import {
+  LinkIcon,
+  Settings,
+  Plus,
+  Crown,
   Lock,
   LogOut,
   Save,
@@ -16,9 +19,10 @@ import {
   Clock,
   DollarSign,
   Users,
-  Crown,
   MessageCircle,
   CheckCircle,
+  BarChart3,
+  RotateCcw,
 } from "lucide-react"
 import type { AttentionNumber } from "@/lib/whatsapp-rotation"
 import Link from "next/link"
@@ -88,6 +92,10 @@ export default function AdminPage() {
   const [rotationClickCount, setRotationClickCount] = useState(0)
   const [rotationLastUpdate, setRotationLastUpdate] = useState<Date | null>(null)
   const [timeRemaining, setTimeRemaining] = useState(0)
+  const [totalRequestsCount, setTotalRequestsCount] = useState(0)
+  const [isResettingStats, setIsResettingStats] = useState(false)
+  // ** rest of code here **
+  const [lastRotationTime, setLastRotationTime] = useState<string>("")
 
   const activeNumbers = useMemo(
     () => attentionNumbers.filter((n) => n.phone.trim() !== "" && n.active),
@@ -125,37 +133,45 @@ export default function AdminPage() {
   }, [])
 
   const loadSettings = useCallback(async () => {
-    const response = await fetch("/api/admin/settings", {
-      credentials: "include",
-      cache: "no-store",
-    })
+    try {
+      const response = await fetch("/api/admin/settings", {
+        credentials: "include",
+        cache: "no-store",
+      })
 
-    if (response.ok) {
-      const data = await response.json()
-      if (data.success && data.settings) {
-        const settings = data.settings
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.settings) {
+          const settings = data.settings
 
-        setActiveAlias(settings.alias || "")
-        setActivePaymentType(settings.paymentType || "alias")
-        setActiveUserCreationEnabled(settings.createUserEnabled ?? true)
-        setActiveTransferTimer(settings.timerSeconds ?? 30)
-        setActiveMinAmount(settings.minAmount ?? 2000)
-        setActiveSupportPhone(settings.supportPhone || "")
-        setActivePlatformUrl(settings.platformUrl || "https://ganamos.sbs")
-        setActiveBonusEnabled(settings.bonusEnabled ?? true)
-        setActiveBonusPercentage(settings.bonusPercentage ?? 25)
+          setActiveAlias(settings.alias || "")
+          setActivePaymentType(settings.paymentType || "alias")
+          setActiveUserCreationEnabled(settings.createUserEnabled ?? true)
+          setActiveTransferTimer(settings.timerSeconds ?? 30)
+          setActiveMinAmount(settings.minAmount ?? 2000)
+          setActiveSupportPhone(settings.supportPhone || "")
+          setActivePlatformUrl(settings.platformUrl || "https://ganamos.sbs")
+          setActiveBonusEnabled(settings.bonusEnabled ?? true)
+          setActiveBonusPercentage(settings.bonusPercentage ?? 25)
 
-        setAlias(settings.alias || "")
-        setPaymentType(settings.paymentType || "alias")
-        setUserCreationEnabled(settings.createUserEnabled ?? true)
-        setTransferTimer(String(settings.timerSeconds ?? 30))
-        setMinAmount(String(settings.minAmount ?? 2000))
-        setSupportPhone(settings.supportPhone || "")
-        setPlatformUrl(settings.platformUrl || "https://ganamos.sbs")
-        setBonusEnabled(settings.bonusEnabled ?? true)
-        setBonusPercentage(String(settings.bonusPercentage ?? 25))
-        setRotationEnabled(settings.rotationEnabled ?? false)
+          setAlias(settings.alias || "")
+          setPaymentType(settings.paymentType || "alias")
+          setUserCreationEnabled(settings.createUserEnabled ?? true)
+          setTransferTimer(String(settings.timerSeconds ?? 30))
+          setMinAmount(String(settings.minAmount ?? 2000))
+          setSupportPhone(settings.supportPhone || "")
+          setPlatformUrl(settings.platformUrl || "https://ganamos.sbs")
+          setBonusEnabled(settings.bonusEnabled ?? true)
+          setBonusPercentage(String(settings.bonusPercentage ?? 25))
+          setRotationEnabled(settings.rotationEnabled ?? false)
+          setTotalRequestsCount(settings.totalRequestsCount || 0)
+          // ** rest of code here **
+          setRotationClickCount(settings.rotationClickCount || 0)
+          setLastRotationTime(settings.lastRotationTime || "")
+        }
       }
+    } catch (error) {
+      console.error("Error loading settings:", error)
     }
   }, [])
 
@@ -465,6 +481,32 @@ export default function AdminPage() {
       alert("Error al guardar la configuración. Verificá tu conexión e intentá de nuevo.")
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleResetTotalRequests = async () => {
+    if (!confirm("¿Estás seguro de resetear el contador de solicitudes? Esta acción no se puede deshacer.")) {
+      return
+    }
+
+    setIsResettingStats(true)
+    try {
+      const response = await fetch("/api/admin/rotation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resetTotalRequests: true }),
+      })
+
+      if (response.ok) {
+        setTotalRequestsCount(0)
+        alert("Contador de solicitudes reseteado correctamente")
+      } else {
+        alert("Error al resetear el contador")
+      }
+    } catch (error) {
+      alert("Error al conectar con el servidor")
+    } finally {
+      setIsResettingStats(false)
     }
   }
 
@@ -1030,6 +1072,37 @@ export default function AdminPage() {
                           </Button>
                         </div>
                       )}
+                    </div>
+                  </div>
+
+                  <div className="bg-black/40 backdrop-blur-md border border-purple-600/20 rounded-xl p-4 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <BarChart3 className="w-5 h-5 text-purple-500" strokeWidth={2.5} />
+                      <h2 className="text-xl font-bold text-white neon-text">Estadísticas</h2>
+                    </div>
+
+                    <div className="rounded-lg border border-purple-500/20 bg-black/30 p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <h3 className="text-sm font-semibold text-white">Solicitudes Totales</h3>
+                          <p className="text-xs text-gray-400">Cantidad de veces que se presionó "Enviar Solicitud"</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-3xl font-bold text-purple-400">{totalRequestsCount}</p>
+                          <p className="text-xs text-gray-400">solicitudes</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 pt-4 border-t border-purple-500/20">
+                        <button
+                          onClick={handleResetTotalRequests}
+                          disabled={isResettingStats || totalRequestsCount === 0}
+                          className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-red-600/20 border border-red-500/30 text-red-400 hover:bg-red-600/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <RotateCcw className={`w-4 h-4 ${isResettingStats ? "animate-spin" : ""}`} />
+                          {isResettingStats ? "Reseteando..." : "Resetear Contador"}
+                        </button>
+                      </div>
                     </div>
                   </div>
 

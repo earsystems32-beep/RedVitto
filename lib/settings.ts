@@ -27,6 +27,7 @@ export interface Settings {
   currentRotationIndex: number
   rotationClickCount: number
   lastRotationTime: string
+  totalRequestsCount: number
 }
 
 function getSupabaseClient() {
@@ -79,6 +80,7 @@ export async function getSettings(): Promise<Settings> {
     currentRotationIndex: data.current_rotation_index || 0,
     rotationClickCount: data.rotation_click_count || 0,
     lastRotationTime: data.last_rotation_time || new Date().toISOString(),
+    totalRequestsCount: data.total_requests_count || 0,
   }
 }
 
@@ -104,6 +106,7 @@ export async function updateSettings(updates: Record<string, unknown>): Promise<
     currentRotationIndex: "current_rotation_index",
     rotationClickCount: "rotation_click_count",
     lastRotationTime: "last_rotation_time",
+    totalRequestsCount: "total_requests_count",
   }
 
   // Aplicar mapeo
@@ -158,5 +161,6 @@ export async function updateSettings(updates: Record<string, unknown>): Promise<
     currentRotationIndex: data.current_rotation_index || 0,
     rotationClickCount: data.rotation_click_count || 0,
     lastRotationTime: data.last_rotation_time || new Date().toISOString(),
+    totalRequestsCount: data.total_requests_count || 0,
   }
 }

@@ -30,12 +30,27 @@ export async function POST(request: Request) {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
     const body = await request.json()
-    const { incrementClick, resetCounters, forceRotate } = body
+    const { incrementClick, resetCounters, forceRotate, resetTotalRequests } = body
 
     const { data: settings, error: fetchError } = await supabase.from("settings").select("*").eq("id", 1).single()
 
     if (fetchError || !settings) {
       return NextResponse.json({ error: "Error al obtener configuración" }, { status: 500 })
+    }
+
+    if (resetTotalRequests) {
+      const { error: updateError } = await supabase
+        .from("settings")
+        .update({
+          total_requests_count: 0,
+        })
+        .eq("id", 1)
+
+      if (updateError) {
+        return NextResponse.json({ error: "Error al resetear contador de solicitudes" }, { status: 500 })
+      }
+
+      return NextResponse.json({ success: true, message: "Contador de solicitudes reseteado", totalRequestsCount: 0 })
     }
 
     if (resetCounters) {
@@ -104,24 +119,29 @@ export async function POST(request: Request) {
     if (incrementClick) {
       const activeNumbers = getActiveNumbers(settings)
 
+      const currentTotalRequests = settings.total_requests_count || 0
+      const newTotalRequests = currentTotalRequests + 1
+
       if (activeNumbers.length === 0) {
-        return NextResponse.json({ success: true, phone: settings.phone || "" })
+        // Actualizar solo el contador total
+        await supabase.from("settings").update({ total_requests_count: newTotalRequests }).eq("id", 1)
+
+        return NextResponse.json({
+          success: true,
+          phone: settings.phone || "",
+          totalRequestsCount: newTotalRequests,
+        })
       }
 
-      // Obtener el índice actual ANTES de cualquier modificación
       const currentIndex = settings.current_rotation_index || 0
       const currentClickCount = settings.rotation_click_count || 0
       const threshold = settings.rotation_threshold || 1
 
-      // El número que se va a usar para ESTE usuario es el del índice actual
       const phoneToUse = activeNumbers[currentIndex % activeNumbers.length]
 
-      // Incrementar el contador de clicks
       const newClickCount = currentClickCount + 1
 
-      // Verificar si después de este click debemos rotar para el PRÓXIMO usuario
       if (newClickCount >= threshold) {
-        // Rotar al siguiente índice para el próximo usuario
         const nextIndex = (currentIndex + 1) % activeNumbers.length
 
         const { error: updateError } = await supabase
@@ -130,6 +150,7 @@ export async function POST(request: Request) {
             current_rotation_index: nextIndex,
             rotation_click_count: 0,
             last_rotation_time: new Date().toISOString(),
+            total_requests_count: newTotalRequests,
           })
           .eq("id", 1)
 
@@ -137,22 +158,22 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: "Error al actualizar rotación" }, { status: 500 })
         }
 
-        // Devolver el número del usuario ACTUAL (no el próximo)
         return NextResponse.json({
           success: true,
           phone: phoneToUse.phone,
           label: phoneToUse.name,
           clickCount: 0,
           threshold: threshold,
-          currentIndex: nextIndex, // El próximo índice ya actualizado
+          currentIndex: nextIndex,
           rotated: true,
+          totalRequestsCount: newTotalRequests,
         })
       } else {
-        // Solo incrementar el contador, no rotar
         const { error: updateError } = await supabase
           .from("settings")
           .update({
             rotation_click_count: newClickCount,
+            total_requests_count: newTotalRequests,
           })
           .eq("id", 1)
 
@@ -168,6 +189,7 @@ export async function POST(request: Request) {
           threshold: threshold,
           currentIndex: currentIndex,
           rotated: false,
+          totalRequestsCount: newTotalRequests,
         })
       }
     }
