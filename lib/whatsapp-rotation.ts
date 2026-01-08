@@ -9,46 +9,85 @@ export interface AttentionNumber {
 }
 
 export interface SupabaseSettings {
-  rotation_enabled: boolean
-  rotation_mode: "clicks" | "time"
-  rotation_threshold: number
-  current_rotation_index: number
-  rotation_click_count: number
-  last_rotation_time: string
-  phone: string
-  // 9 números de atención fijos
+  // snake_case (formato de Supabase/API rotation)
+  rotation_enabled?: boolean
+  rotation_mode?: "clicks" | "time"
+  rotation_threshold?: number
+  current_rotation_index?: number
+  rotation_click_count?: number
+  last_rotation_time?: string
+  phone?: string
+  // camelCase (formato del frontend)
+  rotationEnabled?: boolean
+  rotationMode?: "clicks" | "time"
+  rotationThreshold?: number
+  currentRotationIndex?: number
+  rotationClickCount?: number
+  lastRotationTime?: string
+  // Array de números (formato frontend)
+  attentionNumbers?: Array<{ phone?: string; label?: string; active?: boolean }>
+  // 9 números de atención fijos (snake_case)
   attention_phone_1?: string
   attention_name_1?: string
-  attention_active_1: boolean
+  attention_active_1?: boolean
   attention_phone_2?: string
   attention_name_2?: string
-  attention_active_2: boolean
+  attention_active_2?: boolean
   attention_phone_3?: string
   attention_name_3?: string
-  attention_active_3: boolean
+  attention_active_3?: boolean
   attention_phone_4?: string
   attention_name_4?: string
-  attention_active_4: boolean
+  attention_active_4?: boolean
   attention_phone_5?: string
   attention_name_5?: string
-  attention_active_5: boolean
+  attention_active_5?: boolean
   attention_phone_6?: string
   attention_name_6?: string
-  attention_active_6: boolean
+  attention_active_6?: boolean
   attention_phone_7?: string
   attention_name_7?: string
-  attention_active_7: boolean
+  attention_active_7?: boolean
   attention_phone_8?: string
   attention_name_8?: string
-  attention_active_8: boolean
+  attention_active_8?: boolean
   attention_phone_9?: string
   attention_name_9?: string
-  attention_active_9: boolean
+  attention_active_9?: boolean
+}
+
+function normalizeSettings(settings: SupabaseSettings) {
+  return {
+    rotationEnabled: settings.rotation_enabled ?? settings.rotationEnabled ?? false,
+    rotationMode: settings.rotation_mode ?? settings.rotationMode ?? "clicks",
+    rotationThreshold: settings.rotation_threshold ?? settings.rotationThreshold ?? 1,
+    currentRotationIndex: settings.current_rotation_index ?? settings.currentRotationIndex ?? 0,
+    rotationClickCount: settings.rotation_click_count ?? settings.rotationClickCount ?? 0,
+    lastRotationTime: settings.last_rotation_time ?? settings.lastRotationTime ?? new Date().toISOString(),
+    phone: settings.phone ?? "",
+  }
 }
 
 function getAttentionNumbersFromSettings(settings: SupabaseSettings): AttentionNumber[] {
   const numbers: AttentionNumber[] = []
 
+  if (settings.attentionNumbers && Array.isArray(settings.attentionNumbers)) {
+    settings.attentionNumbers.forEach((num, index) => {
+      if (num?.phone && num.phone.trim()) {
+        numbers.push({
+          id: index + 1,
+          phone: num.phone.trim(),
+          label: num.label?.trim() || `Número ${index + 1}`,
+          active: num.active || false,
+        })
+      }
+    })
+    if (numbers.length > 0) {
+      return numbers
+    }
+  }
+
+  // Fallback: usar formato snake_case (attention_phone_1, etc.)
   for (let i = 1; i <= 9; i++) {
     const phoneKey = `attention_phone_${i}` as keyof SupabaseSettings
     const nameKey = `attention_name_${i}` as keyof SupabaseSettings
@@ -73,21 +112,18 @@ function getAttentionNumbersFromSettings(settings: SupabaseSettings): AttentionN
 
 /**
  * Obtiene el siguiente número de atención según la configuración de rotación
- * @param settings Configuración completa de Supabase
+ * @param settings Configuración completa de Supabase (acepta camelCase o snake_case)
  * @returns El número de teléfono a usar
  */
 export async function getNextAttentionNumber(settings: SupabaseSettings): Promise<string> {
-  console.log("[v0] getNextAttentionNumber - Settings recibidos:", {
-    rotation_enabled: settings.rotation_enabled,
-    rotation_mode: settings.rotation_mode,
-    rotation_threshold: settings.rotation_threshold,
-    current_rotation_index: settings.current_rotation_index,
-  })
+  const normalized = normalizeSettings(settings)
+
+  console.log("[v0] getNextAttentionNumber - Settings normalizados:", normalized)
 
   // Si la rotación está desactivada, usar número fijo
-  if (!settings.rotation_enabled) {
-    console.log("[v0] Rotación DESACTIVADA, usando número fijo:", settings.phone)
-    return settings.phone || ""
+  if (!normalized.rotationEnabled) {
+    console.log("[v0] Rotación DESACTIVADA, usando número fijo:", normalized.phone)
+    return normalized.phone || ""
   }
 
   const allNumbers = getAttentionNumbersFromSettings(settings)
@@ -101,7 +137,7 @@ export async function getNextAttentionNumber(settings: SupabaseSettings): Promis
   // Sin números activos, usar fijo
   if (activeNumbers.length === 0) {
     console.log("[v0] Sin números activos, usando fijo")
-    return settings.phone || ""
+    return normalized.phone || ""
   }
 
   // Solo un número activo
@@ -110,10 +146,10 @@ export async function getNextAttentionNumber(settings: SupabaseSettings): Promis
     return activeNumbers[0].phone
   }
 
-  const currentIndex = settings.current_rotation_index || 0
+  const currentIndex = normalized.currentRotationIndex
 
   // Modo clicks: llamar al API para incrementar y obtener siguiente
-  if (settings.rotation_mode === "clicks") {
+  if (normalized.rotationMode === "clicks") {
     try {
       console.log("[v0] Modo CLICKS - Llamando API /api/admin/rotation")
       const response = await fetch("/api/admin/rotation", {
@@ -144,10 +180,10 @@ export async function getNextAttentionNumber(settings: SupabaseSettings): Promis
   }
 
   // Modo tiempo: verificar si pasó el threshold
-  const lastRotation = new Date(settings.last_rotation_time).getTime()
+  const lastRotation = new Date(normalized.lastRotationTime).getTime()
   const elapsedMinutes = (Date.now() - lastRotation) / 1000 / 60
   const effectiveIndex =
-    elapsedMinutes >= settings.rotation_threshold ? (currentIndex + 1) % activeNumbers.length : currentIndex
+    elapsedMinutes >= normalized.rotationThreshold ? (currentIndex + 1) % activeNumbers.length : currentIndex
 
   console.log("[v0] Modo TIEMPO - Index efectivo:", effectiveIndex, "Número:", activeNumbers[effectiveIndex].phone)
   return activeNumbers[effectiveIndex].phone

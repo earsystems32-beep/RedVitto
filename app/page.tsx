@@ -128,6 +128,9 @@ export default function TheCrown() {
         if (!data.success || !data.settings) return
 
         const s = data.settings
+        console.log("[v0] Settings cargados del API:", s)
+        console.log("[v0] rotationEnabled:", s.rotationEnabled)
+        console.log("[v0] attentionNumbers:", s.attentionNumbers)
         setSettings(s)
         setAlias(s.alias || "")
         setPhoneNumber(s.phone || "")
