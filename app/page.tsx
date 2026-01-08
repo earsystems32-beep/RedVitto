@@ -20,7 +20,7 @@ import {
   Calendar,
 } from "lucide-react"
 import { generateVCF } from "@/lib/vcf-generator"
-import { getNextAttentionNumber } from "@/lib/whatsapp-rotation"
+import { getNextAttentionNumber, getCurrentAttentionNumber } from "@/lib/whatsapp-rotation"
 import { downloadLaCoronaContact } from "@/lib/vcf-generator"
 import { detectOS } from "@/lib/device-detection"
 
@@ -149,7 +149,7 @@ export default function TheCrown() {
         setRotationEnabled(s.rotationEnabled ?? false)
 
         if (!attentionPhoneNumber) {
-          const nextPhone = await getNextAttentionNumber(s)
+          const nextPhone = getCurrentAttentionNumber(s)
           setAttentionPhoneNumber(nextPhone)
         }
       } catch (error) {
@@ -423,7 +423,7 @@ Adjunto comprobante.`
 
   const handleDownloadLaCorona = useCallback(async () => {
     if (!settings) return
-    const currentPhone = await getNextAttentionNumber(settings)
+    const currentPhone = getCurrentAttentionNumber(settings)
     downloadLaCoronaContact(currentPhone)
     setContactSaved(true)
     setShowToast(true)

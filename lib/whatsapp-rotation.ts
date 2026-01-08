@@ -111,6 +111,31 @@ function getAttentionNumbersFromSettings(settings: SupabaseSettings): AttentionN
 }
 
 /**
+ * Obtiene el número de atención ACTUAL sin incrementar contadores
+ * Usar para mostrar el número o para operaciones que no deben disparar rotación
+ */
+export function getCurrentAttentionNumber(settings: SupabaseSettings): string {
+  const normalized = normalizeSettings(settings)
+
+  // Si la rotación está desactivada, usar número fijo
+  if (!normalized.rotationEnabled) {
+    return normalized.phone || ""
+  }
+
+  const allNumbers = getAttentionNumbersFromSettings(settings)
+  const activeNumbers = allNumbers.filter((n) => n.active)
+
+  // Sin números activos, usar fijo
+  if (activeNumbers.length === 0) {
+    return normalized.phone || ""
+  }
+
+  // Devolver el número del índice actual SIN incrementar
+  const currentIndex = normalized.currentRotationIndex
+  return activeNumbers[currentIndex % activeNumbers.length]?.phone || normalized.phone || ""
+}
+
+/**
  * Obtiene el siguiente número de atención según la configuración de rotación
  * @param settings Configuración completa de Supabase (acepta camelCase o snake_case)
  * @returns El número de teléfono a usar
